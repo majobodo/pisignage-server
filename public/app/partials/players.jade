@@ -35,7 +35,7 @@
 
                 .col-sm-2(ng-if='item.version')
                     h6.text-primary.truncate: small ver:&nbsp;{{item.version}}/{{item.platform_version}}&nbsp;
-                        button.btn.btn-warning.btn-xs(ng-if="item.version != player.currentVersion.version",ng-click="swUpdate(item)")
+                        button.btn.btn-warning.btn-xs(ng-if="item.isConnected",ng-click="swUpdate(item)")
                             i.fa.fa-arrow-circle-up
 
 

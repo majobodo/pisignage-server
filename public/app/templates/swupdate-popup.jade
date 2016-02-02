@@ -1,9 +1,20 @@
-.modal-header
-    button.close(ng-click='modal.dismiss()') &times;
-    h3.text-danger Software Update
-.modal-body
-    h5 Do you want to update Software from {{msg.curVer}} to {{msg.newVer}}
-.modal-footer
-    button.btn(ng-click='modal.dismiss()') Cancel
-    button.btn.btn-danger(ng-click='confirmUpdate()') OK
-
+.panel.panel-warning
+    .panel-heading
+        h4
+            span Software Update
+            span.pull-right
+                button.btn.btn-danger(ng-click="confirmUpdate(selectedVersion)",translate) Update
+                button.btn.btn-success(ng-click="modal.close()",translate) Close
+    .panel-body
+        small
+            i.text-info Chooose the version OR update to latest available version by clicking `update`. 
+                | If the os is `jessie` do not downgrade below version 141. 
+        form(role='form',name='swform')
+            .row.form-group
+                .col-sm-4
+                    h4(translate) Update Player To
+                .col-sm-6
+                    select.form-control(ng-model="selectedVersion", ng-options="item as item for item in versions")
+                        option(value="", translate) Update To Latest
+        small More Info check 
+            a(href="https://github.com/colloqi/piSignage/blob/master/RELEASE%20NOTES.md", target="_blank",translate) Release Notes

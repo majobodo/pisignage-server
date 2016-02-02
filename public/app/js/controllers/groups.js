@@ -415,16 +415,32 @@ angular.module('piGroups.controllers', [])
         $scope.swUpdate = function(player) {
             if (player.statusClass == "text-danger")
                 return console.log("Player is offline");
-            $scope.msg = {player:player,curVer:player.version,newVer:$scope.player.currentVersion.version};
-            $scope.modal = $modal.open({
-                templateUrl: '/app/templates/swupdate-popup.html',
-                scope: $scope
-            });
+            
+            $http
+                .get(piUrls.versionlist)
+                .success(function(data,status){
+
+                    if(data.success){
+                        $scope.msg = {player:player,curVer:player.version,newVer:$scope.player.currentVersion.version};
+                        $scope.versions = data.data.reverse().slice(0,10); 
+                        $scope.selectedVersion = null;
+                        $scope.modal = $modal.open({
+                            templateUrl: '/app/templates/swupdate-popup.html',
+                            scope: $scope
+                        });
+                    }else{
+                        $scope.msg = {err: data.stat_message}
+                    }
+                })
+                .error(function(data,status){
+                    console.log(data,status);
+                })
+
         }
 
-        $scope.confirmUpdate = function() {
+        $scope.confirmUpdate = function(version) {
             $http
-                .post(piUrls.swupdate+$scope.msg.player._id, {})
+                .post(piUrls.swupdate+$scope.msg.player._id, {version: version})
                 .success(function(data, status) {
                     $scope.modal.close();
                 })

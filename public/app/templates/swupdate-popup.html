@@ -1,12 +1,24 @@
 
-<div class="modal-header">
-  <button ng-click="modal.dismiss()" class="close">&times;</button>
-  <h3 class="text-danger">Software Update</h3>
-</div>
-<div class="modal-body">
-  <h5>Do you want to update Software from {{msg.curVer}} to {{msg.newVer}}</h5>
-</div>
-<div class="modal-footer">
-  <button ng-click="modal.dismiss()" class="btn">Cancel</button>
-  <button ng-click="confirmUpdate()" class="btn btn-danger">OK</button>
+<div class="panel panel-warning">
+  <div class="panel-heading">
+    <h4><span>Software Update</span><span class="pull-right">
+        <button ng-click="confirmUpdate(selectedVersion)" translate="translate" class="btn btn-danger">Update</button>
+        <button ng-click="modal.close()" translate="translate" class="btn btn-success">Close</button></span></h4>
+  </div>
+  <div class="panel-body"><small><i class="text-info">
+        Chooose the version OR update to latest available version by clicking `update`. 
+        If the os is `jessie` do not downgrade below version 141. </i></small>
+    <form role="form" name="swform">
+      <div class="row form-group">
+        <div class="col-sm-4">
+          <h4 translate="translate">Update Player To</h4>
+        </div>
+        <div class="col-sm-6">
+          <select ng-model="selectedVersion" ng-options="item as item for item in versions" class="form-control">
+            <option value="" translate="translate">Update To Latest</option>
+          </select>
+        </div>
+      </div>
+    </form><small>More Info check <a href="https://github.com/colloqi/piSignage/blob/master/RELEASE%20NOTES.md" target="_blank" translate="translate">Release Notes</a></small>
+  </div>
 </div>

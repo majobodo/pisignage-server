@@ -344,12 +344,30 @@ exports.shellAck = function (sid, response) {
         return rest.sendSuccess(pendingCommands[sid], 'Shell cmd response', response);
 
 }
-
 exports.swupdate = function (req, res) {
-    var object = req.object;
-    pipkgjson = JSON.parse(fs.readFileSync('data/releases/package.json', 'utf8'))
+    var object = req.object,
+        version,
+        pipkgjson = JSON.parse(fs.readFileSync(path.join(config.releasesDir,'/package.json'), 'utf8'));
+
+    if(!req.body.version) 
+        version = 'piimage'+pipkgjson.version+'.zip';
+    else
+        version = req.body.version;
+
     socketio.emitMessage(object.socket, 'swupdate', 'piimage' + pipkgjson.version + '.zip');
     return rest.sendSuccess(res, 'SW update command issued');
+}
+
+exports.getVersionList = function(req,res){
+    fs.readdir(config.releasesDir,function(err,files){
+        //console.log(files)
+        if(err)
+            return rest.sendError(res,"Error in getting version list");
+        var versions = files.filter(function(filename){
+            return (filename.match(config.zipfileRegex) && filename != 'pi-image.zip')
+        })
+        return rest.sendSuccess(res,"Available versions",versions);
+    })
 }
 
 exports.upload = function (cpuId, filename, data) {
