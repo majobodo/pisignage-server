@@ -444,11 +444,12 @@ angular.module('piAssets.controllers',[])
         })
     })
 
-    .controller('AssetViewCtrl', function($scope, $rootScope,$window, $http, piUrls, $state, assetLoader){
+    .controller('AssetViewCtrl', function($scope, $rootScope,$window, $http,$location,piUrls, $state, assetLoader){
 
         //merge the apis for the three
         $scope.fileType;
         $scope.selectedLabels = [];
+
         switch($state.params.file.slice($state.params.file.lastIndexOf('.')+1)) {
             case 'gcal':
                 $scope.fileType = 'gcal';
@@ -524,6 +525,24 @@ angular.module('piAssets.controllers',[])
             } else {
                 $window.history.back();
             }
+        }
+
+        $scope.linkTypes = [{name: 'YouTube or Streaming',ext:'.tv'} ,
+                {name: 'Web Link',ext:'.link'}];
+        $scope.saveNewChanges = function(){
+            $http
+                .post(piUrls.links, {details: $scope.urlLink})
+                .success(function (data, status) {
+                    if (data.success) {
+                        $location.path('/assets/main');
+                    }
+                })
+                .error(function (data, status) {
+                    console.log(data,status);
+                })
+        }
+        $scope.linkUpdateCancel = function(){
+            $location.path('/assets/main');
         }
 
     })
