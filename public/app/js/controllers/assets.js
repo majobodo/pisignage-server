@@ -291,7 +291,11 @@ angular.module('piAssets.controllers',[])
 
         //Add link releated for uploading links
         $scope.link = {
-            types: [{name: 'YouTube or Streaming', ext: '.tv'}, {name: 'Web Link', ext: '.link'}],
+            types: [
+                {name: 'YouTube or Streaming' ,ext:'.tv'} ,
+                {name: 'Web Link(embedded)'  ,ext:'.link'},
+                {name: 'Web Page (needs v1.6.0+)' , ext: '.weblink'}
+            ],
             obj: {
                 name: null,
                 type: '.link',
