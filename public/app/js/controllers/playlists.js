@@ -119,7 +119,7 @@ angular.module('piPlaylists.controllers', [])
         function($scope, $http, $rootScope, piUrls, $window,$state,$modal, assetLoader){
 
             //modal for layout
-            $scope.layouts = {
+             $scope.layouts = {
                 "1": {title: "Single Zone Display", description: "main Zone:1280x720"},
                 "2a": {title: "Two Zones with Main Zone on right", description: "main Zone:960x720, side Zone:320x720"},
                 "2b": {title: "Two Zones with Main Zone on left", description: "main Zone:960x720, side Zone:320x720"},
@@ -165,14 +165,39 @@ angular.module('piPlaylists.controllers', [])
                     disabled:!$rootScope.serverConfig.newLayoutsEnable,
                     description: "main Zone:960x540, side Zone:320x720, banner Zone:960x180"
                 },
-                "2ap": {title: "Single Zone Portrait Mode", description: "main Zone:720x1280"},
+                "2ap": {
+                    title: "Single Zone Portrait Mode, Orient clockwise",
+                    description: "main Zone:720x1280"
+                },
                 "2bp": {
-                    title: "Two Zones Portrait Mode",
+                    title: "Two Zones Portrait Mode, Orient clockwise",
                     disabled:!$rootScope.serverConfig.newLayoutsEnable,
                     description: "top Zone:720x540,bottom zone:720x740"
+                },
+
+
+                "2ap270": {
+                    title: "Single Zone Portrait Mode,Orient anti-clockwise",
+                    description: "main Zone: 720x1280"
+                },
+
+                "2bp270": {
+                    title: "Two Zone Portrait Mode,Orient anti-clockwise",
+                    description: "top Zone:720x540,bottom zone:720x740"
+                },
+                "custom":{
+                    title: "Custom Layout in Landscape Mode (v1.6.0+)",
+                    description: "Upload custom_layout.html under Assets Tab(otherwise this option is disabled), Use #main,#side, #bottom, #ticker html ID tags for content, see github e.g. "
+                },
+                "customp": {
+                    title: "Custom Layout in Portrait Mode, Orient clockwise",
+                    description: "Upload custom_layout.html under Assets Tab(otherwise this option is disabled), Use #main,#side, #bottom, #ticker html ID tags for content, see github e.g."
+                },
+                "customp270":{
+                    title: "Custom Layout in Portrait Mode,Orient anti-clockwise",    
+                    description: "Upload custom_layout.html under Assets Tab(otherwise this option is disabled), Use #main,#side, #bottom, #ticker html ID tags for content, see github e.g."
                 }
             }
-
 
             $scope.openLayout = function(){
                 $scope.videoWindow = $scope.asset.groupWiseAssets[$scope.playlist.selectedPlaylist.name].playlist.videoWindow || {}

@@ -14,7 +14,7 @@ var mongoose = require('mongoose'),
     Settings = mongoose.model('Settings'),
     settingsModel = null;
 
-var licenseDir = config.licenseDirPath
+var licenseDir = config.licenseDirPath;
 
 var getTxtFiles = function(cb){
     var txtOnly;
