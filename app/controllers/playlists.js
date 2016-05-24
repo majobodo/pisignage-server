@@ -11,9 +11,13 @@ var isPlaylist = function (file) {
     return (file.charAt(0) == '_' && file.charAt(1) == '_');
 }
 
-exports.newPlaylist = function ( playlist, cb) {
+exports.newPlaylist = function ( playlist,playlistData,cb) {
     var file = path.join(config.mediaDir, ("__" + playlist + '.json')),
         data = {name:playlist,settings:{ticker:{enable:false},ads:{adPlaylist:false,adInterval:60}},assets:[],layout:'1'};
+
+    if(playlistData){ // for copy playlist
+        data = playlistData;
+    }
 
     fs.writeFile(file, JSON.stringify(data, null, 4), function (err) {
         cb(err,data);
@@ -103,14 +107,25 @@ exports.getPlaylist = function (req, res) {
 }
 
 exports.createPlaylist = function (req, res) {
+    if(req.body.action && (req.body.action == 'copy')){
+        exports.newPlaylist(req.body['file'],req.body['data'], function (err,data) {
+            if (err) {
+                rest.sendError(res, "Playlist copy error", err);
+            } else {
+                rest.sendSuccess(res, "Playlist copied: ", data);
+            }
+        });
+    }else{
+        exports.newPlaylist(req.body['file'],null, function (err,data) {
+            if (err) {
+                rest.sendError(res, "Playlist write error", err);
+            } else {
+                rest.sendSuccess(res, "Playlist Created: ", data);
+            }
+        });
+    }
 
-    exports.newPlaylist(req.body['file'], function (err,data) {
-        if (err) {
-            rest.sendError(res, "Playlist write error", err);
-        } else {
-            rest.sendSuccess(res, "Playlist Created: ", data);
-        }
-    });
+    
 }
 
 exports.savePlaylist = function (req, res) {

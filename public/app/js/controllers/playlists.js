@@ -1,7 +1,7 @@
 'use strict;'
 
 angular.module('piPlaylists.controllers', [])
-    .controller('PlaylistsCtrl',function($scope, $http, $state, piUrls,assetLoader,piPopup){
+    .controller('PlaylistsCtrl',function($scope, $http, $state, $window, piUrls,assetLoader,piPopup){
 
         $scope.fn = {};
         $scope.fn.editMode = false;
@@ -25,7 +25,7 @@ angular.module('piPlaylists.controllers', [])
             }
 
             $http
-                .post(piUrls.playlists, {file: $scope.newPlaylist.name})
+                .post(piUrls.playlists, {file: $scope.newPlaylist.name, action: null})
                 .success(function (data, status) {
                     if (data.success) {
                         $scope.playlist.playlists.unshift(data.data);
@@ -111,6 +111,31 @@ angular.module('piPlaylists.controllers', [])
             } else {
                 return ""
             }
+        }
+        $scope.copyPlaylist = function(playlistFile){
+            // console.log($scope.playlist,playlistFile)
+            var copyPlaylist = playlistFile.name+"_copy" ,
+                playlistExist = null;
+
+            $scope.playlist.playlists.forEach(function(file){
+                if(file.name == copyPlaylist){
+                    playlistExist = true;
+                }
+            })
+
+            if(!playlistExist){
+                $http
+                    .post(piUrls.playlists, {file: copyPlaylist, action: "copy" , data: playlistFile})
+                    .success(function (data, status) {
+                        if (data.success) {
+                            $window.location.reload();
+                        }
+                    })
+                    .error(function (data, status) {
+                    });
+            }else{
+                piPopup.status({title: "Playlist ", msg: playlistFile.name+ " - playlist already  exist!!! "});
+            }            
         }
     })
 

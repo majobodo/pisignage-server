@@ -15,13 +15,15 @@
 
     ul.nav.nav-pills.nav-stacked(ng-hide="collapsed")
         li(ng-repeat="playlist in playlist.playlists",ng-class="fn.getClass(playlist)")
-            a(ng-click="fn.selected(playlist)")
+            a(href="#")
                 .row
-                    .col-sm-10
+                    .col-sm-10(ng-click="fn.selected(playlist)")
                         small(ng-hide="playlist.renameEnable && fn.editMode") {{ playlist.name }}
                         .form-group(ng-show="playlist.renameEnable && fn.editMode")
                             input.form-control(type='text', ng-model='playlist.newname',ng-blur="fn.rename($index)")
                     .col-sm-2
+                        button.btn.btn-link.pull-right(ng-if="!fn.editMode",ng-click="copyPlaylist(playlist)")
+                            i.fa.fa-files-o
                         button.close(ng-click='$event.stopPropagation();fn.delete($index);',ng-if="fn.editMode")
                             i.fa.fa-times-circle(ng-class="{'text-danger': fn.editMode}")
-
+                       
