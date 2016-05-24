@@ -5,8 +5,10 @@
 
         li.list-group-item(ng-repeat='item in player.players | filter:search | orderBy:"lastReported":true')
             .row
-                .col-sm-4(ng-click='shellCommand(item)')
+                .col-sm-3
                     h6.text-primary.truncate  {{item.localName || ("Player "+item.cpuSerialNumber.slice(12))}}
+                .col-sm-1(ng-click='shellCommand(item)')
+                    i.fa.fa-lg.fa-terminal.fa-border.bg-info.pull-right(title="Terminal")
                 .col-sm-3
                     .row
                         .col-sm-6(style="padding-right:3px;")
@@ -23,7 +25,7 @@
                     select.form-control.select-xs(ng-model="item.group.name",ng-change="assignGroup(item)",
                                                                         ng-options="gr for gr in group.groupNames")
             .row
-                .col-sm-4
+                .col-sm-3
                     h6.text-primary: small {{item.cpuSerialNumber}}
                 .col-sm-3
                     h6.text-primary.truncate: small last seen:&nbsp;{{item.lastReported | date: "MMM dd, hh:mm a"}}
@@ -33,7 +35,7 @@
                         i.fa.fa-spinner.fa-spin
                         small.truncate &nbsp;{{item.wgetBytes }} &nbsp;{{item.wgetSpeed }}B/sec
 
-                .col-sm-2(ng-if='item.version')
+                .col-sm-3(ng-if='item.version')
                     h6.text-primary.truncate: small ver:&nbsp;{{item.version}}/{{item.platform_version}}&nbsp;
                         button.btn.btn-warning.btn-xs(ng-if="item.version != player.currentVersion.version",ng-click="swUpdate(item)")
                             i.fa.fa-arrow-circle-up
