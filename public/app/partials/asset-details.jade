@@ -8,17 +8,23 @@
             source(ng-src='{{filedetails.path}}',type="audio/mpeg")
         iframe(ng-if='filedetails.type=="html"' ng-src='{{ filedetails.path }}')
         div(ng-if='fileType=="link"')
-            .row
-                .col-xs-2.col-xs-offset-1
-                    h4.text-muted Address
-                .col-xs-8
-                    h4 {{urlLink.link}}
-            .row
-                .col-xs-2.col-xs-offset-1
-                    h4.text-muted Type
-                .col-xs-8
-                    h4 {{urlLink.type == ".tv"?"You Tube":"Web"}}
-
+            form(role="form",name="linkForm")
+                legend Link File Details
+                .form-group.row
+                    label.col-sm-4.control-label File Name:
+                    .col-sm-8
+                        h4 {{urlLink.name}}
+                .form-group.row
+                    label.col-sm-4.control-label Type:
+                    .col-sm-6
+                        select.form-control(ng-options='entry.ext as entry.name for entry in link.types',name='linktype', ng-model='urlLink.type', required='')
+                .form-group.row
+                    label.col-sm-4.control-label Address:
+                    .col-sm-6
+                        input.form-control(type="text",ng-model="urlLink.link")
+                .form-group.row
+                    .col-sm-2.col-sm-offset-10
+                        button.btn.btn-success(ng-click="updateLink()",ng-if='linkForm.$dirty') Update
         div(ng-if='(fileType=="gcal") && calendar.list.length')
             h4: strong  Profile
             .media

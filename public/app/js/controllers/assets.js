@@ -453,6 +453,13 @@ angular.module('piAssets.controllers',[])
         //merge the apis for the three
         $scope.fileType;
         $scope.selectedLabels = [];
+         $scope.link = {
+            types: [
+                {name: 'YouTube or Streaming' ,ext:'.tv'} ,
+                {name: 'Web Link(embedded)'  ,ext:'.link'},
+                {name: 'Web Page (needs v1.6.0+)' , ext: '.weblink'}
+            ]
+        }
         switch($state.params.file.slice($state.params.file.lastIndexOf('.')+1)) {
             case 'gcal':
                 $scope.fileType = 'gcal';
@@ -472,6 +479,7 @@ angular.module('piAssets.controllers',[])
                 break;
             case 'link':
             case 'tv':
+            case'weblink':
                 $scope.fileType = 'link';
                 $http
                     .get(piUrls.links+$state.params.file)
@@ -528,6 +536,19 @@ angular.module('piAssets.controllers',[])
             } else {
                 $window.history.back();
             }
+        }
+        $scope.updateLink = function(){
+            $http
+                .post(piUrls.links, {details: $scope.urlLink })
+                .success(function (data, status) {
+                    if (data.success) {
+                        $window.location.reload(); // udpate assets
+                        $state.go("home.assets.main",{},{reload: true});
+                    }
+                })
+                .error(function (data, status) {
+                    $scope.errorMessage = data.stat_message;
+                })
         }
 
     })
