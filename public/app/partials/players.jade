@@ -6,7 +6,7 @@
         li.list-group-item(ng-repeat='item in player.players | filter:search | orderBy:"lastReported":true')
             .row
                 .col-sm-4(ng-click='shellCommand(item)')
-                    h6.text-primary.truncate  {{item.localName || ("Player "+item.cpuSerialNumber.slice(12))}}
+                    h6.text-primary.truncate(ng-class="item.licensed ? 'text-primary': 'text-warning'")  {{item.localName || ("Player "+item.cpuSerialNumber.slice(12))}}
                 .col-sm-3
                     .row
                         .col-sm-6(style="padding-right:3px;")

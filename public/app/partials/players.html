@@ -7,7 +7,7 @@
     <li ng-repeat="item in player.players | filter:search | orderBy:&quot;lastReported&quot;:true" class="list-group-item">
       <div class="row">
         <div ng-click="shellCommand(item)" class="col-sm-4">
-          <h6 class="text-primary truncate"> {{item.localName || ("Player "+item.cpuSerialNumber.slice(12))}}</h6>
+          <h6 ng-class="item.licensed ? 'text-primary': 'text-warning'" class="text-primary truncate"> {{item.localName || ("Player "+item.cpuSerialNumber.slice(12))}}</h6>
         </div>
         <div class="col-sm-3">
           <div class="row">
