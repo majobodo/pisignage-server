@@ -438,6 +438,27 @@ angular.module('piGroups.controllers', [])
             else if(event.keyCode == 40)
                 $scope.msg.cmd = commands.next();
         }
+        $scope.snapshot = {
+            image: "/app/img/snapshot.png", 
+            buttonTxt: "Take Snapshot"
+        }
+        $scope.getSnapshot = function() {
+            $scope.snapshot.buttonTxt = "Please Wait";
+            $http
+                .post(piUrls.snapshot + $scope.msg.player._id , { 'player': $scope.msg.player })
+                .success(function(data, status) {
+                    if (data.success) {
+                        $scope.snapshot.image = (data.data.url) + "?" + Date.now()
+                        $scope.snapshot.lastTaken = data.data.lastTaken
+                        $scope.snapshot.buttonTxt = "Take Snapshot";
+                    } else {
+                        $scope.snapshot.buttonTxt = data.stat_message;
+                    }
+                })
+                .error(function(data, status) {
+                    console.log(data,status)
+                });
+        }
 
 
         $interval(playerLoader.getPlayers,60000);

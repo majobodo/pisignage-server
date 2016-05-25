@@ -397,3 +397,59 @@ exports.tvPower = function(req,res){
     return rest.sendSuccess(res,'TV command issued');
 }
 
+var snapShotTimer;
+var pendingSnapshots = {};
+var alreadyReplied = false;
+
+exports.piScreenShot = function (sid,data) { 
+    clearTimeout(snapShotTimer)
+    var img = (new Buffer(data.data,"base64")).toString("binary")
+    fs.writeFile(path.join(config.thumbnailDir,data.playerInfo.cpuSerialNumber + '.jpeg'), img, 'binary',function (err) {
+        if (err)
+            console.log('error in  saving screenshot for ' + data.playerInfo.cpuSerialNumber, err);
+        if (pendingSnapshots[sid]) {
+            alreadyReplied = true;
+            rest.sendSuccess(pendingSnapshots[sid], 'screen shot received',
+                {
+                    url: "/media/_thumbnails/"+data.playerInfo.cpuSerialNumber+".jpeg",
+                    lastTaken: Date.now()
+                }
+            );
+            pendingSnapshots[sid] = null;
+        }
+    })
+}
+
+exports.takeSnapShot = function (req, res) { // send socket.io event
+    var object = req.object;
+    if (pendingSnapshots[object.socket])
+        rest.sendError(res, 'snapshot taking in progress');
+    else if (!object.isConnected) {
+        fs.stat(path.join(config.thumbnailDir, object.cpuSerialNumber + '.jpeg'), function (err, stats) {
+            rest.sendSuccess(res, 'player is offline, sending previous snapshot',
+                {
+                    url: "/media/_thumbnails/" + object.cpuSerialNumber + ".jpeg",
+                    lastTaken: stats ? stats.mtime : "NA"
+                }
+            );
+        })
+    } else {
+        pendingSnapshots[object.socket] = res;
+        alreadyReplied = false;
+        snapShotTimer = setTimeout(function () {
+            pendingSnapshots[object.socket] = null;
+            fs.stat(path.join(config.thumbnailDir, object.cpuSerialNumber + '.jpeg'), function (err, stats) {
+                if (!alreadyReplied) {
+                    alreadyReplied = true;
+                    rest.sendSuccess(res, 'screen shot command timeout',
+                        {
+                            url: "/media/_thumbnails/" + object.cpuSerialNumber + ".jpeg",
+                            lastTaken: stats ? stats.mtime : "NA"
+                        }
+                    );
+                }
+            })
+        }, 60000)
+        socketio.emitMessage(object.socket, 'snapshot');
+    }
+}

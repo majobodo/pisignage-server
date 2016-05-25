@@ -29,6 +29,10 @@ var handleClient = function (socket) {
         players.shellAck(socket.id, response);
     });
 
+    socket.on('snapshot', function (response) {
+        players.piScreenShot(socket.id,response);
+    });
+
     socket.on('upload', function (player, filename, data) {
         players.upload(player, filename, data);
     });
