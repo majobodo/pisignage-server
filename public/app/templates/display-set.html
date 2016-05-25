@@ -10,17 +10,10 @@
           <label translate="translate" class="text-muted">Resolution</label>
         </div>
       </div>
-      <div class="col-sm-4">
-        <div class="radio">
+      <div class="col-sm-8">
+        <div ng-repeat="item in resolutions" class="radio">
           <label>
-            <input type="radio" ng-model="group.selectedGroup.resolution" ng-value="resolutions[0].value"/><small>{{resolutions[0].name}}</small>
-          </label>
-        </div>
-      </div>
-      <div class="col-sm-4">
-        <div class="radio">
-          <label>
-            <input type="radio" ng-model="group.selectedGroup.resolution" ng-value="resolutions[1].value"/><small>{{resolutions[1].name}}</small>
+            <input type="radio" ng-model="group.selectedGroup.resolution" ng-value="item.value"/><small>{{item.name}}</small>
           </label>
         </div>
       </div>
@@ -28,20 +21,13 @@
     <div class="form-group row">
       <div class="col-sm-4 text-right">
         <div class="radio">
-          <label translate="translate" class="text-muted">Orientation</label>
+          <label translate="translate" class="text-muted">TV Orientation</label>
         </div>
       </div>
       <div class="col-sm-4">
-        <div class="radio">
+        <div ng-repeat="item in orientations" class="radio">
           <label>
-            <input type="radio" ng-model="group.selectedGroup.orientation" ng-value="orientations[0].value"/><small>{{orientations[0].name}}</small>
-          </label>
-        </div>
-      </div>
-      <div class="col-sm-4">
-        <div class="radio">
-          <label>
-            <input type="radio" ng-model="group.selectedGroup.orientation" ng-value="orientations[1].value"/><small>{{orientations[1].name}}</small>
+            <input type="radio" ng-model="group.selectedGroup.orientation" ng-value="item.value"/><small>{{item.name}}</small>
           </label>
         </div>
       </div>

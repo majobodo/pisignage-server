@@ -263,8 +263,9 @@ angular.module('piGroups.controllers', [])
             ];
 
             $scope.orientations = [
-                {value: 'landscape', name: "Landscape Mode"},
-                {value: 'portrait', name: "Portrait Mode"}
+                {value:'landscape',name: "Landscape"},
+                {value:'portrait',name: "Portrait Right (Hardware)"},
+                {value:'portrait270',name: "Portrait Left (Hardware)"}
             ];
 
             $scope.animations = [

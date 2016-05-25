@@ -6,30 +6,20 @@
             .col-sm-4.text-right
                 .radio
                     label.text-muted(translate) Resolution
-            .col-sm-4
-                .radio
+            .col-sm-8
+                .radio(ng-repeat='item in resolutions')
                     label
-                        input(type="radio",ng-model="group.selectedGroup.resolution",ng-value="resolutions[0].value")
-                        small {{resolutions[0].name}}
-            .col-sm-4
-                .radio
-                    label
-                        input(type="radio",ng-model="group.selectedGroup.resolution",ng-value="resolutions[1].value")
-                        small {{resolutions[1].name}}
+                        input(type="radio",ng-model="group.selectedGroup.resolution",ng-value="item.value")
+                        small {{item.name}}
         .form-group.row
             .col-sm-4.text-right
                 .radio
-                    label.text-muted(translate) Orientation
+                    label.text-muted(translate) TV Orientation
             .col-sm-4
-                .radio
+                .radio(ng-repeat="item in orientations")
                     label
-                        input(type="radio",ng-model="group.selectedGroup.orientation",ng-value="orientations[0].value")
-                        small {{orientations[0].name}}
-            .col-sm-4
-                .radio
-                    label
-                        input(type="radio",ng-model="group.selectedGroup.orientation",ng-value="orientations[1].value")
-                        small {{orientations[1].name}}
+                        input(type="radio",ng-model="group.selectedGroup.orientation",ng-value="item.value")
+                        small {{item.name}}
         .form-group.row
             .col-sm-4.text-right
                 .radio
