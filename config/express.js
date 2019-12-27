@@ -2,6 +2,7 @@
 
 var express = require('express'),
     path = require('path'),
+    fs = require('fs'),
     config = require('./config'),
     serveIndex = require('serve-index');
 
@@ -18,9 +19,10 @@ var favicon = require('serve-favicon'),             //express middleware
 var allowCrossDomain = function (req, res, next) {
     res.header('Access-Control-Allow-Origin', req.headers.origin);
     res.header('Access-Control-Allow-Credentials', true);
+    res.header('Vary', "Origin");   //https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin
     res.header('Access-Control-Expose-Headers', 'Content-Length');
     res.header('Access-Control-Allow-Methods', 'HEAD,GET,PUT,POST,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type,Content-Length, X-Requested-With,origin,accept,Authorization,x-access-token');
+    res.header('Access-Control-Allow-Headers', 'Content-Type,Content-Length, X-Requested-With,origin,accept,Authorization,x-access-token,Last-Modified');
 
     if (req.method == 'OPTIONS') {
         res.sendStatus(200);
@@ -45,7 +47,7 @@ var basicHttpAuth = function(req,res,next) {
 
         var tmp = auth.split(' ');   // Split on a space, the original auth looks like  "Basic Y2hhcmxlczoxMjM0NQ==" and we need the 2nd part
 
-        var buf = new Buffer(tmp[1], 'base64'); // create a buffer and tell it the data coming in is base64
+        var buf =  Buffer.from(tmp[1], 'base64'); // create a buffer and tell it the data coming in is base64
         var plain_auth = buf.toString();        // read it back out as a string
 
         //console.log("Decoded Authorization ", plain_auth);
@@ -103,7 +105,17 @@ module.exports = function (app) {
     //app.use(auth.connect(digest));      //can specify specific routes for auth also
     app.use(basicHttpAuth);
 
-    app.use('/sync_folders',serveIndex(config.syncDir));
+    //app.use('/sync_folders',serveIndex(config.syncDir));
+    app.use('/sync_folders',function(req, res, next){
+            fs.stat(path.join(config.syncDir,req.path), function(err, stat){
+                if (!err && stat.isDirectory()) {
+                    res.setHeader('Last-Modified', (new Date()).toUTCString());
+                }
+                next();
+            })
+        },
+        serveIndex(config.syncDir)
+    );
     app.use('/sync_folders',express.static(config.syncDir));
     app.use('/releases',express.static(config.releasesDir));
     app.use('/licenses',express.static(config.licenseDir));

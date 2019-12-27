@@ -12,7 +12,7 @@
                         i.fa.fa-close
             .col-sm-2
                 form
-                    input.form-control(type="text",placeholder="filter",ng-model="search.$")
+                    input.form-control(type="text",placeholder="filter",ng-model="searchFilename")
             .col-sm-3.dropdown(dropdown,ng-if="!assetConfig.allAssets")
                 button.btn.btn-success.dropdown-toggle.pull-right(dropdown-toggle)
                     i.fa.fa-plus &nbsp;ADD
@@ -27,8 +27,16 @@
                         a.btn.btn-link.btn-block(ng-click="link.showPopup()")
                             | Add a Link
                     li
-                        a.btn.btn-link.btn-block(ng-click="configureGCalendar()")
-                            | Add Calendar
+                        a.btn.btn-link.btn-block(ng-click="link.showPopup('txt')")
+                            | Add a Message
+                    li
+                        a.btn.btn-link.btn-block(ng-click="link.showPopup('local')",
+                            title="{{'You can local folder/file here'}}")
+                            | Add a local folder/file
+
+                    //li
+                    //    a.btn.btn-link.btn-block(ng-click="configureGCalendar()")
+                    //        | Add Calendar
             .col-sm-1(ng-if="!assetConfig.allAssets")
                 a.btn.btn-link(ng-click='fn.edit()')
                     strong.text-muted EDIT
@@ -47,17 +55,18 @@
 
 
     ul.list-group(as-sortable="sortable.options",ng-model="assetConfig.assets.assets",style="min-height:50px;")
-        li.list-group-item(ng-repeat='file in assetConfig.assets.assets | filter:labelFilter | filter:search track by $index',
+        li.list-group-item(ng-repeat='file in assetConfig.assets.assets | filter:labelFilter',
                                 as-sortable-item,
+                                ng-show="([file.fileDetails.name] | filter:searchFilename).length",
                                 ng-class='{"list-group-item-danger":file.deleted}', style="margin:0px;min-height:70px;" )
             .row(as-sortable-item-handle)
                 .col-sm-2
                     a(ng-click='fn.showDetails(file.fileDetails.name)')
                         img.media-object.img-rounded(ng-if='file.fileDetails.thumbnail',ng-src='{{file.fileDetails.thumbnail}}')
                         .letter-box.media-object.img-rounded(ng-if='!file.fileDetails.thumbnail')
-                            span(ng-if='file.filesDetails.type == "audio"')
+                            span(ng-if='file.fileDetails.type == "audio" || file.fileDetails.type == "radio"')
                                 i.fa.fa-music
-                            span(ng-if='file.filesDetails.type != "audio"')
+                            span(ng-if='file.fileDetails.type != "audio" && file.fileDetails.type != "radio"')
                                 | {{file.fileDetails.type.slice(0,1) || 'N'}}
                 .col-sm-10
                     .row
@@ -82,9 +91,25 @@
                     .row
                         .col-sm-6
                             small.text-info {{file.fileDetails.labels.join(',')}}
-                        .col-sm-5
+                        .col-sm-3
                             small.text-muted {{file.fileDetails.type}},&nbsp;{{file.fileDetails.size}},&nbsp;
                                 | {{file.fileDetails.createdAt | date: 'MMM dd'}}
+                        .col-sm-3
+                            button.btn.btn-link.btn-xs(title="{{'Add validity period for the asset'}}",
+                            ng-click="scheduleValidity(file)")
+                                i.fa.fa-calendar &nbsp;
+                                small(ng-if='!(file.fileDetails.validity.enable)')
+                                    | add validity
+                                small(ng-if='file.fileDetails.validity.enable')
+                                    | {{file.fileDetails.validity.startdate | date:'MMM d':'UTC'}}
+                                    small(ng-if='file.fileDetails.validity.startdate && file.fileDetails.validity.starthour')
+                                        | ({{file.fileDetails.validity.starthour}}h)
+                                    | -
+                                    | {{file.fileDetails.validity.enddate | date:'MMM d':'UTC'}}
+                                    small.text-muted(ng-if='file.fileDetails.validity.enddate && file.fileDetails.validity.endhour')
+                                        | ({{file.fileDetails.validity.endhour}}h)
+
+
 
         h5.text-danger(ng-show="!assetConfig.assets.assets.length")
             | &nbsp&nbsp Nothing to show, Use `Add` button to add an asset or 'Assign Assets' to assign assets to playlist
@@ -105,4 +130,6 @@
                 .col-xs-2
                     button.btn.btn-danger.pull-right(ng-click='fn.delete($index)')
                         i.fa.fa-times.fa-lg
+
+
 

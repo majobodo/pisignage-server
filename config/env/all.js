@@ -26,6 +26,9 @@ module.exports = {
     
     defaultPlaylist: "default",
 
+    logFile:                rootPath+ "/../forever_out.log",
+    logStoreDir:            assetDir+ "/_logs",
+
     mongo: {
         options: {
             db: {
@@ -38,24 +41,25 @@ module.exports = {
     },
 
     filenameRegex:          /[&\/\\#,+()$~%'":*?<>{}]/g,
-    videoRegex: /(mp4|mov|m4v|avi|webm|wmv|flv|mkv|mpg|mpeg)$/i,
-    audioRegex: /(mp3)$/i,
+    groupNameRegEx:         /[&\/\\#,+()$~%'":*?<>{}\^]/g,
+    videoRegex: /(mp4|mov|m4v|avi|webm|wmv|flv|mkv|mpg|mpeg|3gp)$/i,
+    audioRegex: /(mp3|m4a|mp4a|aac)$/i,
     imageRegex: /(jpg|jpeg|png|gif|bmp)$/i,
     htmlRegex: /\.html$/,
+    noticeRegex: /\.html$/,
     zipfileRegex: /(.zip|.gz|.bz2)$/i,
     repofileRegex: /\.repo$/i,
     liveStreamRegex: /\.tv$/i,
     omxStreamRegex:  /\.stream$/i,
+    pdffileRegex:           /\.pdf$/i,
+    txtFileRegex:           /\.txt$/i,
     linkUrlRegex: /\.link$/i,
     CORSLink:  /\.weblink$/i,
+    localFolderRegex:       /\.local$/i,
     mediaRss:               /\.mrss$/i,
+    radioFileRegex:         /\.radio$/i,
+    brandRegex:             /^(brand_intro|brand_intro_portrait)\./i,
     nestedPlaylist:         /^__/i,
     gcalRegex: /\.gcal$/i,
-    gCalendar: {
-        CLIENT_ID: '',
-        CLIENT_SECRET: '',
-        REDIRECT_URL: '',
-        REDIRECT_BASE_URL: ''
-    },
     systemAssets: ["_system_notice.html"]
 };

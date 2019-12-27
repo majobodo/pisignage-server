@@ -10,7 +10,8 @@ var mongoose = require('mongoose'),
     async = require('async'),
     config = require('../../config/config');
 
-var socketio = require('./server-socket'),
+var oldSocketio = require('./server-socket'),
+    newSocketio = require('./server-socket-new'),
     licenses = require('./licenses');
 
 var installation,
@@ -34,15 +35,18 @@ var readVersions = function() {
 }
 readVersions();
 
+fs.mkdir(config.logStoreDir, function(err) {
+    if (err && (err.code != 'EEXIST')) {
+        console.log("Error creating logs directory, "+err.code)
+    }
+});
+
 
 var activePlayers = {},
     lastCommunicationFromPlayers = {};
-Player.find({"isConnected": true}, function (err, players) {
-    if (err)
-        return;
-    players.forEach(function (player) {
-        activePlayers[player._id.toString()] = false;
-    })
+Player.update({"isConnected": true},{$set:{"isConnected": false}},{ multi: true }, function(err, num) {
+    if (!err && num)
+        console.log("Reset isConnected for "+num.nModified+" players");
     checkPlayersWatchdog();
 })
 
@@ -70,11 +74,12 @@ function checkPlayersWatchdog() {
     async.eachSeries(playerIds, function (playerId, cb) {
         if (!activePlayers[playerId]) {
             Player.findById(playerId, function (err, player) {
-                if (!err && player) {
+                if (!err && player && player.isConnected) {
                     player.isConnected = false;
                     player.save();
-                    delete activePlayers[playerId];
+                    console.log("disconnect: "+player.installation+"-"+player.name+";reason: checkPlayersWatchdog")
                 }
+                delete activePlayers[playerId];
                 cb();
             })
         } else {
@@ -84,6 +89,19 @@ function checkPlayersWatchdog() {
     }, function (err) {
         readVersions() //update version of software
         setTimeout(checkPlayersWatchdog, 600000);    //cleanup every 10 minutes
+    })
+}
+
+exports.updateDisconnectEvent = function(socketId, reason) {
+    Player.findOne({socket:socketId}, function(err,player) {
+        if (!err && player) {
+            player.isConnected = false;
+            player.save();
+            delete activePlayers[player._id.toString()];
+            console.log("disconnect: "+player.installation+"-"+player.name+";reason: "+reason)
+        } else {
+            //console.log("not able to find player for disconnect event: "+socketId);
+        }
     })
 }
 
@@ -115,6 +133,7 @@ var sendConfig = function (player, group, periodic) {
         retObj.playlists = groupPlaylists;
     }
     retObj.assets = groupAssets;
+    retObj.assetsValidity = group.assetsValidity;
     retObj.groupTicker = groupTicker;
     retObj.lastDeployed = group.lastDeployed;
     retObj.installation = installation;
@@ -124,35 +143,54 @@ var sendConfig = function (player, group, periodic) {
     retObj.name = player.name;
     retObj.resolution = group.resolution || '720p';
     retObj.orientation = group.orientation || 'landscape';
+    retObj.enableMpv =  group.enableMpv || false;
+    retObj.kioskUi = group.kioskUi || {enable: false};
     retObj.animationType =  group.animationType || "right";
     if (!player.version || parseInt(player.version.replace(/\D/g,"")) < 180)
         retObj.animationEnable =  false;
     else
         retObj.animationEnable =  group.animationEnable || false;
     retObj.resizeAssets = group.resizeAssets || false;
+    retObj.videoKeepAspect = group.videoKeepAspect || false;
+    retObj.imageLetterboxed = group.imageLetterboxed || false;
     retObj.sleep = group.sleep || {enable: false, ontime: null , offtime: null };
+    retObj.reboot = group.reboot || {enable: false, time: null };
     retObj.signageBackgroundColor =  group.signageBackgroundColor || "#000";
-    retObj.omxVolume = group.omxVolume || 100;
+    retObj.omxVolume = (group.omxVolume || group.omxVolume == 0)?group.omxVolume:100;
+    retObj.timeToStopVideo = group.timeToStopVideo || 0;
     retObj.logo =  group.logo;
     retObj.logox =  group.logox;
     retObj.logoy =  group.logoy;
     retObj.showClock = group.showClock || {enable: false};
+    retObj.emergencyMessage = group.emergencyMessage || {enable: false};
     retObj.combineDefaultPlaylist = group.combineDefaultPlaylist || false;
+    retObj.playAllEligiblePlaylists = group.playAllEligiblePlaylists || false;
+    retObj.shuffleContent = group.shuffleContent || false;
+    retObj.alternateContent = group.alternateContent || false;
     retObj.urlReloadDisable =  group.urlReloadDisable || false;
     retObj.loadPlaylistOnCompletion =  group.loadPlaylistOnCompletion || false;
     //if (!pipkgjson)
         //pipkgjson = JSON.parse(fs.readFileSync('data/releases/package.json', 'utf8'))
-    retObj.currentVersion = {version: pipkgjson.version, platform_version: pipkgjson.platform_version};
-    retObj.gcal = {
-        id: config.gCalendar.CLIENT_ID,
-        token: config.gCalendar.CLIENT_SECRET
-    }
+    retObj.currentVersion = { version: pipkgjson.version, platform_version: pipkgjson.platform_version,
+        beta: pipkgjsonBeta.version}
+    // retObj.gcal = {
+    //     id: config.gCalendar.CLIENT_ID,
+    //     token: config.gCalendar.CLIENT_SECRET
+    // }
     if (periodic) {
     }
 
     retObj.systemMessagesHide = settings.systemMessagesHide;
+    retObj.forceTvOn = settings.forceTvOn;
+    retObj.hideWelcomeNotice = settings.hideWelcomeNotice;
+    retObj.reportIntervalMinutes=settings.reportIntervalMinutes;
     retObj.authCredentials = settings.authCredentials;
+    retObj.enableLog = settings.enableLog || false;
+    retObj.enableYoutubeDl = settings.enableYoutubeDl || false;
+    if (settings.sshPassword)
+        retObj.sshPassword = settings.sshPassword;
     retObj.currentTime = Date.now();
+    var socketio = (player.newSocketIo?newSocketio:oldSocketio);
     socketio.emitMessage(player.socket, 'config', retObj);
 }
 
@@ -179,18 +217,30 @@ exports.index = function (req, res) {
         criteria['group._id'] = req.query['group'];
     }
 
+    if (req.query['groupName']) {
+        criteria['group.name'] = req.query['groupName'];
+    }
+
     if (req.query['string']) {
         var str = new RegExp(req.query['string'], "i")
         criteria['name'] = str;
     }
 
 
-    if (req.param('location')) {
-        criteria['$or'] = [ {'location':req.param('location')}, {'configLocation':req.param('location')} ];
+    if (req.query['location']) {
+        criteria['$or'] = [ {'location':req.query['location']}, {'configLocation':req.query['location']} ];
     }
 
-    if (req.param('label')) {
-        criteria['labels'] = req.param('label');
+    if (req.query['label']) {
+        criteria['labels'] = req.query['label'];
+    }
+
+    if (req.query['currentPlaylist']) {
+        criteria['currentPlaylist'] = req.query['currentPlaylist'];
+    }
+
+    if (req.query['version']) {
+        criteria['version'] = req.query['version'];
     }
 
     var page = req.query['page'] > 0 ? req.query['page'] : 0
@@ -337,7 +387,7 @@ exports.deleteObject = function (req, res) {
 }
 
 var updatePlayerCount = {},
-    perDayCount = 60 * 24;
+    perDayCount = 20 * 24;
 exports.updatePlayerStatus = function (obj) {
     var retObj = {};
 
@@ -377,7 +427,8 @@ exports.updatePlayerStatus = function (obj) {
                         var now = Date.now(),
                             pid = player._id.toString();
                         //throttle messages
-                        if (!lastCommunicationFromPlayers[pid] || (now - lastCommunicationFromPlayers[pid]) > 60000) {
+                        if (!lastCommunicationFromPlayers[pid] || (now - lastCommunicationFromPlayers[pid]) > 60000 ||
+                            obj.priority) {
                             lastCommunicationFromPlayers[pid] = now;
                             sendConfig(player,group, (updatePlayerCount[obj.cpuSerialNumber] === 1));
                         } else {
@@ -409,17 +460,32 @@ exports.secretAck = function (sid, status) {
 }
 
 var pendingCommands = {};
+var shellCmdTimer = {};
 
 exports.shell = function (req, res) {
     var cmd = req.body.cmd;
-    var object = req.object;
-    pendingCommands[object.socket] = res;
-    socketio.emitMessage(object.socket, 'shell', cmd);
+    var object = req.object,
+        sid = object.socket;
+    pendingCommands[sid] = res;
+    var socketio = (object.newSocketIo?newSocketio:oldSocketio);
+    socketio.emitMessage(sid, 'shell', cmd);
+
+    clearTimeout(shellCmdTimer[sid]);
+    shellCmdTimer[sid] = setTimeout(function(){
+        delete shellCmdTimer[sid];
+        if(pendingCommands[sid]){
+            rest.sendSuccess(res,"Request Timeout",
+                { err: "Could not get response from the player,Make sure player is online and try again."})
+            pendingCommands[sid] = null;
+        }
+    },60000)
 }
 
 exports.shellAck = function (sid, response) {
 
     if (pendingCommands[sid]) {
+        clearTimeout(shellCmdTimer[sid])
+        delete shellCmdTimer[sid];
         rest.sendSuccess(pendingCommands[sid], 'Shell cmd response', response);
         pendingCommands[sid] = null;
     }
@@ -432,6 +498,7 @@ exports.swupdate = function (req, res) {
     if (!version) {
         version = 'piimage'+pipkgjson.version+'.zip'
     }
+    var socketio = (object.newSocketIo?newSocketio:oldSocketio);
     socketio.emitMessage(object.socket, 'swupdate',version);
     //console.log("updating to "+(version?version:'piimage'+pipkgjson.version+'.zip'));
     return rest.sendSuccess(res, 'SW update command issued');
@@ -441,13 +508,23 @@ exports.upload = function (cpuId, filename, data) {
     Player.findOne({cpuSerialNumber: cpuId}, function (err, player) {
         if (player) {
             var logData;
-            if (path.extname(filename) == '.log') {
+            if(filename.indexOf('forever_out') == 0 ){
+                fs.writeFile(config.logStoreDir+'/'+cpuId+'_forever_out.log',data,function(err){
+                    if(err) {
+                        console.log("error", "Error in writing forever_out log for " + cpuId);
+                        console.log(err);
+                    }
+                    // else
+                    //     console.log("info","Forever Log file saved for player : "+cpuId);
+                })
+            } else if (path.extname(filename) == '.log' && filename != "forever_out.log") {
                 try {
                     logData = JSON.parse(data);
                     logData.installation = player.installation;
                     logData.playerId = player._id.toString();
                 } catch (e) {
                     //corrupt file
+                    console.log(player.cpuSerialNumber)
                     console.log("corrupt log file: "+filename);
                 }
             } else if (path.extname(filename) == '.events') {
@@ -468,6 +545,7 @@ exports.upload = function (cpuId, filename, data) {
                     }
                 }
             }
+            var socketio = (player.newSocketIo?newSocketio:oldSocketio);
             socketio.emitMessage(player.socket, 'upload_ack', filename);
         } else {
             console.log("ignoring file upload: " + filename);
@@ -476,10 +554,18 @@ exports.upload = function (cpuId, filename, data) {
 }
 
 exports.tvPower = function(req,res){
-    var status = req.body.status;
-    var object = req.object;
-    socketio.emitMessage(object.socket,'cmd','tvpower',{off: status} );
-    return rest.sendSuccess(res,'TV command issued');
+    var object = req.object,
+        cmd = req.body.cmd || "tvpower",
+        arg;
+    if (cmd =="debuglevel") {
+        arg = {level: req.body.level }
+    } else if (cmd == "tvpower") {
+        arg =  {off: req.body.status}
+    }
+
+    var socketio = (object.newSocketIo?newSocketio:oldSocketio);
+    socketio.emitMessage(object.socket,'cmd',cmd,arg );
+    return rest.sendSuccess(res,'Player command issued');
 }
 
 
@@ -488,7 +574,7 @@ var snapShotTimer = {};
 var pendingSnapshots = {};
 
 exports.piScreenShot = function (sid,data) { // save screen shot in  _screenshots directory
-    var img = (new Buffer(data.data,"base64")).toString("binary"),
+    var img =  Buffer.from(data.data,"base64").toString("binary"),
         cpuId = data.playerInfo["cpuSerialNumber"];
 
     clearTimeout(snapShotTimer[cpuId])
@@ -537,6 +623,7 @@ exports.takeSnapshot = function (req, res) { // send socket.io event
                 );
             })
         }, 60000)
+        var socketio = (object.newSocketIo?newSocketio:oldSocketio);
         socketio.emitMessage(object.socket, 'snapshot');
     }
 }

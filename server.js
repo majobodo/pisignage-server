@@ -4,6 +4,7 @@
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 
 var express = require('express'),
+    oldSocketio = require('919.socket.io'),
     socketio = require('socket.io'),
     mongoose= require('mongoose');
 
@@ -14,15 +15,17 @@ var path = require('path'),
 var config = require(path.join(__dirname,'/config/config'));
 
 // Connect to database
-var db = mongoose.connect(config.mongo.uri, config.mongo.options);
+mongoose.Promise = global.Promise;
+mongoose.connect(config.mongo.uri, config.mongo.options,function(error){
+    if (error) {
+        console.log('********************************************');
+        console.log('*          MongoDB Process not running     *');
+        console.log('********************************************\n');
 
-db.connection.on('error',function(){
-    console.log('********************************************');
-    console.log('*          MongoDB Process not running     *');
-    console.log('********************************************\n');
+        process.exit(1);
+    }
+});
 
-    process.exit(1);
-})
 
 // check system 
 require('./app/others/system-check')();
@@ -31,6 +34,13 @@ var modelsPath = path.join(__dirname, 'app/models');
 fs.readdirSync(modelsPath).forEach(function (file) {
     require(modelsPath + '/' + file);
 });
+
+console.log('********************************************************************');
+console.log('*    After update if you do not see your groups, please change     *');
+console.log('*    change the uri variable to "mongodb://localhost/pisignage-dev"*');
+console.log('*    in config/env/development.js and restart the server           *');
+console.log('******************************************************************\n');
+
 
 var app = express();
 
@@ -41,9 +51,9 @@ require('./config/express')(app);
 var server;
 if (config.https) {
     var https_options = {
-        ca: fs.readFileSync("/home/ec2-user/.ssh/ca-chain.crt"),
-        key: fs.readFileSync("/home/ec2-user/.ssh/nodeims.key"),
-        cert: fs.readFileSync("/home/ec2-user/.ssh/STAR_nodeims_com.crt")
+        ca: fs.readFileSync("/home/ec2-user/.ssh/intermediate.crt"),
+        key: fs.readFileSync("/home/ec2-user/.ssh/pisignage-server.key"),
+        cert: fs.readFileSync("/home/ec2-user/.ssh/pisignage-server.crt")
     };
     server = require('https').createServer(https_options, app);
 
@@ -53,15 +63,36 @@ else {
     server = require('http').createServer(app);
 }
 
-var io = socketio.listen(server);
+var io = oldSocketio.listen(server);
+var ioNew = socketio(server,{
+    path: '/newsocket.io',
+    serveClient: true,
+    // below are engine.IO options
+    pingInterval: 45000,
+    pingTimeout: 45000,
+    upgradeTimeout: 60000,
+    maxHttpBufferSize: 10e7
+});
 
 //Bootstrap socket.io
 require('./app/controllers/server-socket').startSIO(io);
+require('./app/controllers/server-socket-new').startSIO(ioNew);
+
 require('./app/controllers/scheduler');
 
 server.listen(config.port, function () {
     console.log('Express server listening on port %d in %s mode', config.port, app.get('env'));
 });
+
+server.on('connection', function(socket) {
+    // 60 minutes timeout
+    socket.setTimeout(3600000);
+});
+server.on('error', function (err) {console.log("caught ECONNRESET error 1");console.log(err)});
+io.on('error', function (err) {console.log("caught ECONNRESET error 2");console.log(err)});
+io.sockets.on('error', function (err) {console.log("caught ECONNRESET error 3");console.log(err)});
+ioNew.on('error', function (err) {console.log("caught ECONNRESET error 4");console.log(err)});
+ioNew.sockets.on('error', function (err) {console.log("caught ECONNRESET error 5");console.log(err)});
 
 // Expose app
 module.exports = app;

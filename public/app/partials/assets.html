@@ -10,7 +10,7 @@
           <button ng-show="label.selectedLabel" ng-click="label.selectedLabel=null;" class="btn btn-info btn-sm"><i class="fa fa-close"></i></button></span></div>
       <div class="col-sm-2">
         <form>
-          <input type="text" placeholder="filter" ng-model="search.$" class="form-control"/>
+          <input type="text" placeholder="filter" ng-model="searchFilename" class="form-control"/>
         </form>
       </div>
       <div dropdown="dropdown" ng-if="!assetConfig.allAssets" class="col-sm-3 dropdown">
@@ -20,7 +20,11 @@
             <nodeims-file-upload onstart="upload.onstart()" onprogress="upload.onprogress(percentDone)" onerror="upload.onerror(files, type, msg)" ondone="upload.ondone(files, data)">Upload Files</nodeims-file-upload>
           </li>
           <li><a ng-click="link.showPopup()" class="btn btn-link btn-block">Add a Link</a></li>
-          <li><a ng-click="configureGCalendar()" class="btn btn-link btn-block">Add Calendar</a></li>
+          <li><a ng-click="link.showPopup('txt')" class="btn btn-link btn-block">Add a Message</a></li>
+          <li><a ng-click="link.showPopup('local')" title="{{'You can local folder/file here'}}" class="btn btn-link btn-block">Add a local folder/file</a></li>
+          <!--li-->
+          <!--    a.btn.btn-link.btn-block(ng-click="configureGCalendar()")-->
+          <!--        | Add Calendar-->
         </ul>
       </div>
       <div ng-if="!assetConfig.allAssets" class="col-sm-1"><a ng-click="fn.edit()" class="btn btn-link"><strong class="text-muted">EDIT</strong></a></div>
@@ -31,10 +35,10 @@
     </div>
   </div>
   <ul as-sortable="sortable.options" ng-model="assetConfig.assets.assets" style="min-height:50px;" class="list-group">
-    <li ng-repeat="file in assetConfig.assets.assets | filter:labelFilter | filter:search track by $index" as-sortable-item="as-sortable-item" ng-class="{&quot;list-group-item-danger&quot;:file.deleted}" style="margin:0px;min-height:70px;" class="list-group-item">
+    <li ng-repeat="file in assetConfig.assets.assets | filter:labelFilter" as-sortable-item="as-sortable-item" ng-show="([file.fileDetails.name] | filter:searchFilename).length" ng-class="{&quot;list-group-item-danger&quot;:file.deleted}" style="margin:0px;min-height:70px;" class="list-group-item">
       <div as-sortable-item-handle="as-sortable-item-handle" class="row">
         <div class="col-sm-2"><a ng-click="fn.showDetails(file.fileDetails.name)"><img ng-if="file.fileDetails.thumbnail" ng-src="{{file.fileDetails.thumbnail}}" class="media-object img-rounded"/>
-            <div ng-if="!file.fileDetails.thumbnail" class="letter-box media-object img-rounded"><span ng-if="file.filesDetails.type == &quot;audio&quot;"><i class="fa fa-music"></i></span><span ng-if="file.filesDetails.type != &quot;audio&quot;">{{file.fileDetails.type.slice(0,1) || 'N'}}</span></div></a></div>
+            <div ng-if="!file.fileDetails.thumbnail" class="letter-box media-object img-rounded"><span ng-if="file.fileDetails.type == &quot;audio&quot; || file.fileDetails.type == &quot;radio&quot;"><i class="fa fa-music"></i></span><span ng-if="file.fileDetails.type != &quot;audio&quot; &amp;&amp; file.fileDetails.type != &quot;radio&quot;">{{file.fileDetails.type.slice(0,1) || 'N'}}</span></div></a></div>
         <div class="col-sm-10">
           <div class="row">
             <div class="col-sm-6"><small>{{file.fileDetails.name }}<small ng-if="playlist.selectedPlaylist &amp;&amp; !assetConfig.allAssets">&nbsp;{{file.playlistDetails.side}} &nbsp;{{file.playlistDetails.bottom}}</small></small></div>
@@ -51,9 +55,13 @@
           </div>
           <div class="row">
             <div class="col-sm-6"><small class="text-info">{{file.fileDetails.labels.join(',')}}</small></div>
-            <div class="col-sm-5"><small class="text-muted">
+            <div class="col-sm-3"><small class="text-muted">
                 {{file.fileDetails.type}},&nbsp;{{file.fileDetails.size}},&nbsp;
                 {{file.fileDetails.createdAt | date: 'MMM dd'}}</small></div>
+            <div class="col-sm-3">
+              <button title="{{'Add validity period for the asset'}}" ng-click="scheduleValidity(file)" class="btn btn-link btn-xs"><i class="fa fa-calendar">&nbsp;</i><small ng-if="!(file.fileDetails.validity.enable)">add validity</small><small ng-if="file.fileDetails.validity.enable">{{file.fileDetails.validity.startdate | date:'MMM d':'UTC'}}<small ng-if="file.fileDetails.validity.startdate &amp;&amp; file.fileDetails.validity.starthour">({{file.fileDetails.validity.starthour}}h)</small>-
+                  {{file.fileDetails.validity.enddate | date:'MMM d':'UTC'}}<small ng-if="file.fileDetails.validity.enddate &amp;&amp; file.fileDetails.validity.endhour" class="text-muted">({{file.fileDetails.validity.endhour}}h)</small></small></button>
+            </div>
           </div>
         </div>
       </div>

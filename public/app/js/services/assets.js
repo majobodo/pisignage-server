@@ -103,6 +103,9 @@ angular.module('piAssets.services', [])
                         return;
                     var obj = {};
                     obj.fileDetails = assetLoader.asset.filesDetails[asset.filename] || {name: asset.filename};
+                    obj.fileDetails.muteButtonEnable =
+                        asset.filename.match(piConstants.videoRegex)  ||asset.filename.match(piConstants.omxStreamRegex)  ||asset.filename.match(piConstants.liveStreamRegex)
+
                     obj.playlistDetails = asset;
                     obj.deleted = (assetLoader.asset.files.indexOf(asset.filename) == -1) &&
                                         (asset.filename.indexOf("_system") != 0);
@@ -135,6 +138,7 @@ angular.module('piAssets.services', [])
                 obj.fileDetails = assetLoader.asset.filesDetails[filename] || {name: filename};
                 obj.playlistDetails = {filename: filename, selected: false};
                 obj.playlistDetails.isVideo = !(filename.match(piConstants.videoRegex) == null);
+                obj.playlistDetails.option = obj.playlistDetails.option ||  {main:false}
                 if (assetLoader.asset.filesDetails[filename])
                     obj.playlistDetails.duration = parseInt(assetLoader.asset.filesDetails[filename].duration);
                 obj.playlistDetails.duration = obj.playlistDetails.duration || $rootScope.serverConfig.defaultDuration;

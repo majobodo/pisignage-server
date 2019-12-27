@@ -7,7 +7,7 @@ var players = require('./players'),
 
 var handleClient = function (socket) {
 
-    //console.log("connection event: "+socket.id);
+    //console.log("connection with 0.9.19 socket.io : "+socket.id);
     socket.on('status', function (settings, status, priority) {
         var statusObject = _.extend(
             {
@@ -19,6 +19,7 @@ var handleClient = function (socket) {
             settings,
             status
         )
+        statusObject.newSocketIo = false;
         players.updatePlayerStatus(statusObject)
     });
 
@@ -38,7 +39,8 @@ var handleClient = function (socket) {
         players.upload(player, filename, data);
     });
 
-    socket.on('disconnect', function () {
+    socket.on('disconnect', function (reason) {
+        players.updateDisconnectEvent(socket.id,reason);
         //console.log("disconnect event: "+socket.id);
     });
 };

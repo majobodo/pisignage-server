@@ -14,7 +14,8 @@ var mongoose = require('mongoose'),
 
 exports.index = function (req, res) {
 
-    var files,dbdata;
+    var files = [],
+        dbdata;
     async.series([
         function(next) {
             fs.readdir(config.mediaDir, function (err, data) {
@@ -24,6 +25,8 @@ exports.index = function (req, res) {
                     files = data.filter(function (file) {
                         return (file.charAt(0) != '_' && file.charAt(0) != '.');
                     });
+                    if (files.length)
+                        files.sort(function(str1,str2){return (str1.localeCompare(str2,undefined,{numeric:true}));});
                     next();
                 }
             })
@@ -51,8 +54,13 @@ exports.index = function (req, res) {
 
 exports.createFiles = function (req, res) {
 
-    var files = req.files["assets"],
+    var files = [],
         data = [];
+
+    if (req.files)
+        files = req.files["assets"]
+    else
+        return rest.sendError(res, "There are no files to be uploaded");
 
     async.each(files, renameFile, function (err) {
         if (err) {
@@ -67,6 +75,13 @@ exports.createFiles = function (req, res) {
     function renameFile(fileObj, next) {
         console.log("Uploaded file: "+fileObj.path);
         var filename = fileObj.originalname.replace(config.filenameRegex, '');
+
+        if ((filename).match(config.zipfileRegex)) //unzip won't work with spcaces in file name
+            filename = filename.replace(/ /g,'')
+
+        if(filename.match(config.brandRegex)) // change brand video name
+            filename = filename.toLowerCase();
+
         fs.rename(fileObj.path, path.join(config.mediaDir, filename), function (err) {
             if (err) {
                 next(err);
@@ -110,10 +125,21 @@ exports.getFileDetails = function (req, res) {
                         fileData.type = 'audio';
                     else if (file.match(config.htmlRegex))
                         fileData.type = 'html';
-                    else if (file.match(config.liveStreamRegex) || file.match(config.linkUrlRegex))
+                    else if (file.match(config.liveStreamRegex)
+                                || file.match(config.omxStreamRegex)
+                                || file.match(config.mediaRss)
+                                || file.match(config.CORSLink)
+                                || file.match(config.linkUrlRegex)
+                    )
                         fileData.type = 'link';
                     else if (file.match(config.gcalRegex))
                         fileData.type = 'gcal';
+                    else if (file.match(config.pdffileRegex))
+                        fileData.type = 'pdf';
+                    else if (file.match(config.txtFileRegex))
+                        fileData.type = 'text';
+                    else if (file.match(config.radioFileRegex))
+                        fileData.type = 'radio'
                     else
                         fileData.type = 'other';
                     next();

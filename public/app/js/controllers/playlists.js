@@ -1,7 +1,7 @@
-'use strict;'
+'use strict'
 
 angular.module('piPlaylists.controllers', [])
-    .controller('PlaylistsCtrl',function($scope, $http, $state, piUrls,assetLoader,piPopup){
+    .controller('PlaylistsCtrl',function($scope, $http, $state, piUrls,assetLoader,piConstants,piPopup){
 
         $scope.fn = {};
         $scope.fn.editMode = false;
@@ -16,6 +16,9 @@ angular.module('piPlaylists.controllers', [])
             if (!$scope.newPlaylist.name) {
                 return;
             }
+
+            $scope.newPlaylist.name = $scope.newPlaylist.name.replace(piConstants.groupNameRegEx,'');
+
 
             for (var i = 0; i < $scope.playlist.playlists.length; i++) {
                 if ($scope.playlist.playlists[i].name == $scope.newPlaylist.name) {
@@ -123,7 +126,7 @@ angular.module('piPlaylists.controllers', [])
 
 
     .controller('PlaylistViewCtrl',
-        function($scope, $http, $rootScope, piUrls, $window,$state,$modal, assetLoader, layoutOtherZones){
+        function($scope, $http, $rootScope, piUrls, $window,$state,$modal, assetLoader, layoutOtherZones,$timeout){
 
             $scope.customTemplates = function(asset) {
                 return asset.match(/^custom_layout.*html$/i)
@@ -229,9 +232,12 @@ angular.module('piPlaylists.controllers', [])
 
             $scope.layoutOtherZones = layoutOtherZones;
             $scope.openLayout = function(){
+                var playlistObj = $scope.asset.groupWiseAssets[$scope.playlist.selectedPlaylist.name].playlist;
                 loadLayoutStructure();
-                $scope.videoWindow = $scope.asset.groupWiseAssets[$scope.playlist.selectedPlaylist.name].playlist.videoWindow || {}
-                $scope.zoneVideoWindow = $scope.asset.groupWiseAssets[$scope.playlist.selectedPlaylist.name].playlist.zoneVideoWindow || {}
+                playlistObj.videoWindow = playlistObj.videoWindow || {mainzoneOnly:false}
+                playlistObj.zoneVideoWindow = playlistObj.zoneVideoWindow || {}
+                $scope.videoWindow = playlistObj.videoWindow
+                $scope.zoneVideoWindow = playlistObj.zoneVideoWindow
                 $scope.modal = $modal.open({
                     templateUrl: '/app/templates/layout-popup.html',
                     scope: $scope
@@ -277,7 +283,9 @@ angular.module('piPlaylists.controllers', [])
                 var settings = $scope.asset.groupWiseAssets[$scope.playlist.selectedPlaylist.name].playlist.settings
                 settings.ticker.enable = settings.ticker.enable || false
                 settings.ticker.behavior = settings.ticker.behavior || 'slide'
-                settings.ticker.rss = settings.ticker.rss || { enable: false , link: null }
+                settings.ticker.textSpeed = settings.ticker.textSpeed || 3
+                settings.ticker.rss = settings.ticker.rss || { enable: false , link: null, feedDelay:10 }
+                $scope.tickerObj = $scope.playlist.selectedPlaylist.settings.ticker;
                 $scope.modal = $modal.open({
                     templateUrl: '/app/templates/ticker-popup.html',
                     scope: $scope
@@ -285,15 +293,31 @@ angular.module('piPlaylists.controllers', [])
             }
 
             $scope.openAd = function() {
+                var settings = $scope.asset.groupWiseAssets[$scope.playlist.selectedPlaylist.name].playlist.settings
+                settings.ads = settings.ads || {adPlaylist : false, adInterval : 60 } ;
+                settings.ads.adCount = settings.ads.adCount || 1;
+                settings.audio = settings.audio || {enable: false,random: false,volume: 50}  ;
                 $scope.modal = $modal.open({
                     templateUrl: '/app/templates/ad-popup.html',
                     scope: $scope
                 });
             }
 
+            $scope.saveTickerSettings = function() {
+                $scope.saveSettings();
+            }
+
             $scope.saveSettings = function() {
                 var pl = $scope.asset.groupWiseAssets[$scope.playlist.selectedPlaylist.name].playlist;
 
+                if (pl.settings.ticker.rss && pl.settings.ticker.rss.enable && !pl.settings.ticker.rss.link) {
+                    $scope.tickerPopupErrMessage = "Please enter RSS link address";
+                    $timeout(function(){
+                        $scope.tickerPopupErrMessage = ""
+                        return;
+                    },3000)
+                    return;
+                }
                 if (pl.settings.ticker.style)
                     pl.settings.ticker.style = pl.settings.ticker.style.replace(/\"/g,'');
                 if (pl.settings.ticker.messages)
@@ -360,12 +384,36 @@ angular.module('piPlaylists.controllers', [])
             }
         }
 
+        $scope.makeCopy = function(mediaObj,position) {
+            var playlist = $scope.asset.groupWiseAssets[$scope.playlist.selectedPlaylist.name].playlist;
+            if (playlist) {
+                playlist.assets.splice(position, 0, angular.copy(playlist.assets[position]))
+                $scope.asset.groupWiseAssets[$scope.playlist.selectedPlaylist.name].assets.splice(position, 0,
+                    angular.copy($scope.asset.groupWiseAssets[$scope.playlist.selectedPlaylist.name].assets[position]))
+                $http.post(piUrls.playlists + playlist.name, {assets: playlist.assets})
+                    .success(function (data, status) {
+                        if (data.success) {
+                        }
+                    })
+                    .error(function (data, status) {
+                        console.log(status);
+                    });
+
+            }
+        }
+
+
+
         // modal for link files
         $scope.linkFile = function(item,zone){
             //rawdata.fileD = $scope.filesDetails; //files from database
             //rawdata.fileA = $scope.playlistItems; // file from playlist
             $scope.selectedAsset = item;
             $scope.selectedZone = zone;
+            if (item[zone] && item[zone].indexOf("__") == 0)
+                $scope.tabIndex = 1;
+            else
+                $scope.tabIndex = 0;
 
             $http
                 .get(piUrls.playlists, {})
@@ -384,6 +432,7 @@ angular.module('piPlaylists.controllers', [])
                 return !(file.match(piConstants.audioRegex) ||
                 file.match(piConstants.liveStreamRegex) || file.match(piConstants.CORSLink));
             })
+            
 
             $scope.modal = $modal.open({
                 templateUrl: '/app/templates/linkfile-popup.html',
@@ -391,10 +440,14 @@ angular.module('piPlaylists.controllers', [])
             });
         }
 
+        $scope.changeTab = function(index) {
+            $scope.tabIndex = index;
+        }
+
         $scope.linkFileSave = function(file){
             $scope.selectedAsset[$scope.selectedZone] = file;
             $scope.saveData();
-            $scope.modal.close();
+            //$scope.modal.close();
         }
 
         $scope.removeLinkFile = function(file,zone){

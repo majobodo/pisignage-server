@@ -2,7 +2,7 @@
 
 angular.module('piGroups.controllers', [])
 
-    .controller('GroupsCtrl', function ($scope, $http, piUrls, $location, piPopup,playerLoader) {
+    .controller('GroupsCtrl', function ($scope, $http,$sce, piUrls, $location, piPopup,$modal,playerLoader,piConstants,GroupFunctions) {
 
         
         
@@ -19,6 +19,7 @@ angular.module('piGroups.controllers', [])
             if (!$scope.newGroup.name) {
                 return;
             }
+            $scope.newGroup.name = $scope.newGroup.name.replace(piConstants.groupNameRegEx,'');
 
             for (var i = 0; i < $scope.group.groups.length; i++) {
                 if ($scope.group.groups[i].name == $scope.newGroup.name) {
@@ -57,6 +58,63 @@ angular.module('piGroups.controllers', [])
                 $scope.fn.selected($scope.group.groups[index])
             }
         }
+
+        var deployToAll = function (groups) { // global sync
+            var errMessages = [],
+                error = false;
+            async.each(groups, function (group, next) {
+                GroupFunctions.listFiles(group, $scope.playlistsObj, $scope.playlists, function (err, groupObj) {
+                    groupObj.deploy = true;
+                    $http
+                        .post(piUrls.groups + group._id, groupObj)
+                        .then(function (response) {
+                            var data = response.data;
+                            if (!data.success && group.name.indexOf("__player__") != 0) {
+                                errMessages.push("*** " + ("Deploy failed for ") + group.name + ", " + ('reason: ') + data.stat_message);
+                                //piPopup.status({msg: "Did not deply for "+ group.name + " reason: "+data.stat_message,
+                                //    title: ('Deploy ')});
+                            } else {
+                                errMessages.push(("Deploy done for ") + group.name);
+                            }
+                            next();
+                        }, function (response) {
+                            errMessages.push("*** " + ("Deploy failed for ") + group.name + ", " + ("reason: http post error"));
+                            next();
+                        });
+                })
+            }, function (err) {
+                var msg = errMessages.join("\n\n")
+                piPopup.status({msg: msg, title: 'Deploy '});
+            })
+        }
+
+        $scope.globalSync = function () {
+            $http
+                .get(piUrls.playlists, {})
+                .then(function (response) {
+                    var data = response.data;
+                    if (data.success) {
+                        $scope.playlistsObj = data.data;
+                        $scope.playlists = $scope.playlistsObj.map(function (playlist) {
+                            return (playlist.name)
+                        });
+                        $http.get(piUrls.groups, {params: {all: "all"}})
+                            .then(function (response) {
+                                var data = response.data;
+                                if (data.success) {
+                                    deployToAll(data.data);
+                                }
+                            }, function (response) {
+                            });
+                    } else {
+                        console.log('error in getting playlist details' + data.stat_message);
+                    }
+
+                }, function (response) {
+                    console('error in getting playlist details' + response.status);
+                });
+        }
+
 
         $scope.fn.rename = function (index) {
             $scope.group.groups[index].renameEnable = false;
@@ -107,7 +165,7 @@ angular.module('piGroups.controllers', [])
     })
 
     .controller('GroupDetailCtrl', function ($scope, $rootScope, $http, piUrls,$state, $modal,
-                                                    weeks, days,weeksObject,daysObject,playerLoader,$timeout,layoutOtherZones) {
+                                                    weeks, days,weeksObject,daysObject,playerLoader,$timeout,GroupFunctions,piPopup) {
 
         //make sure state.params.group is set
         if ($scope.group.selectedGroup && !($state.params.group)) {
@@ -144,85 +202,37 @@ angular.module('piGroups.controllers', [])
 
         playerLoader.registerObserverCallback(initSortArray,"group-detail");
         initSortArray();
-
+        
         $scope.updateGroup = function (cb) {
             $scope.needToDeploy = true;
-            $scope.group.selectedGroup.assets = [];
-            $scope.emptyPlExist = false;
-            for (var i=$scope.group.selectedGroup.playlists.length -1;i>=0;i--) {
-                if ($scope.group.selectedGroup.playlists[i].name && $scope.group.selectedGroup.playlists[i].name.length > 0) {
-                    var playlist = $scope.playlist.playlists[$scope.playlist.playlistNames.indexOf($scope.group.selectedGroup.playlists[i].name)];
-                    playlist.assets.forEach(function (asset) {
-                        if (asset.filename && $scope.group.selectedGroup.assets.indexOf(asset.filename) == -1
-                                            && asset.filename.indexOf("_system") != 0) {
-                            $scope.group.selectedGroup.assets.push(asset.filename);
+            GroupFunctions.listFiles($scope.group.selectedGroup, $scope.playlist.playlists, $scope.playlist.playlistNames, function (err, groupObj) {
+                $scope.deployErrorMessage = err;
+                $scope.group.selectedGroup = groupObj;
+                $http
+                    .post(piUrls.groups + $state.params.group, $scope.group.selectedGroup)
+                    .success(function (data, status) {
+                        if (data.success) {
+                            $scope.group.selectedGroup = data.data;
+                            $scope.group.selectedGroup.omxVolume =
+                                ($scope.group.selectedGroup.omxVolume ||
+                                    $scope.group.selectedGroup.omxVolume == 0)?$scope.group.selectedGroup.omxVolume:100;
+                            $scope.showDates()
                         }
-                        layoutOtherZones[playlist.layout].forEach(function(zone) {
-                            if (asset[zone] && $scope.group.selectedGroup.assets.indexOf(asset[zone]) == -1 &&
-                                                asset[zone].indexOf("_system") != 0){
-                                $scope.group.selectedGroup.assets.push(asset[zone]);
-                                if(asset[zone].indexOf('__') == 0){ // for nested playlist
-                                    var playlistName = asset[zone].slice(2,asset[zone].indexOf(".json")),
-                                        nestedPlaylistIndex = $scope.playlist.playlistNames.indexOf(playlistName);
-
-                                    if (nestedPlaylistIndex != -1 &&
-                                        Array.isArray($scope.playlist.playlists[nestedPlaylistIndex].assets)) {
-                                        $scope.playlist.playlists[nestedPlaylistIndex].assets.forEach(function(plfile){
-                                            if($scope.group.selectedGroup.assets.indexOf(plfile.filename) == -1 &&
-                                                plfile.filename.indexOf("_system") != 0){
-                                                $scope.group.selectedGroup.assets.push(plfile.filename);
-                                            }
-                                        })
-                                    }
-                                }
-                            }
-                        })
+                        if (cb)
+                            cb(!data.success,data.stat_message)
+                    })
+                    .error(function (data, status) {
+                        if (cb)
+                            cb(true)
+                    })
+                    .finally(function(){
+                        initSortArray();
                     });
-                    if ($scope.group.selectedGroup.assets.indexOf('__' + playlist.name + '.json') == -1)
-                        $scope.group.selectedGroup.assets.push('__' + playlist.name + '.json');
-                    if($scope.group.selectedGroup.logo && $scope.group.selectedGroup.assets.indexOf($scope.group.selectedGroup.logo) == -1)
-                        $scope.group.selectedGroup.assets.push($scope.group.selectedGroup.logo);
-                    if($scope.group.selectedGroup.playlists[i].templateName &&
-                                    ($scope.group.selectedGroup.assets.indexOf($scope.group.selectedGroup.playlists[i].templateName) == -1))
-                        $scope.group.selectedGroup.assets.push($scope.group.selectedGroup.playlists[i].templateName)
-                    $scope.group.selectedGroup.playlists[i].settings = $scope.group.selectedGroup.playlists[i].settings || {}
-                    $scope.group.selectedGroup.playlists[i].settings.ads = playlist.settings.ads
-                    if(playlist.name != 'TV_OFF') {
-                        if (playlist.assets.length == 0) {
-                            $scope.emptyPlExist = true;
-                            $scope.group.selectedGroup.playlists[i].skipForSchedule = true;
-                        } else {
-                            $scope.group.selectedGroup.playlists[i].skipForSchedule = false;
-                        }
-                    }
-
-                } else {
-                    $scope.group.selectedGroup.playlists.splice(i,1);
-                }
-            }
-
-            $http
-                .post(piUrls.groups + $state.params.group, $scope.group.selectedGroup)
-                .success(function (data, status) {
-                    if (data.success) {
-                        $scope.group.selectedGroup = data.data;
-                        $scope.group.selectedGroup.omxVolume = $scope.group.selectedGroup.omxVolume || 100
-                        $scope.showDates()
-                    }
-                    if (cb)
-                        cb(!data.success,data.stat_message)
-                })
-                .error(function (data, status) {
-                    if (cb)
-                        cb(true)
-                })
-                .finally(function(){
-                    initSortArray();
-                });
+            })
         }
 
         $scope.add = function () {
-            if ($scope.group.selectedGroup.playlists.length >= 20) {
+            if ($scope.group.selectedGroup.playlists.length >= 100) {
                 $timeout(function () {
                     $scope.showMaxErr = false;
                 }, 5000);
@@ -231,7 +241,7 @@ angular.module('piGroups.controllers', [])
             }
             //$scope.deployform.$setDirty(); //  inform user  of new changes
             $scope.group.selectedGroup.playlists.unshift({
-                name: $scope.group.selectedGroup.playlists[0].name ,
+                name: $scope.group.selectedGroup.playlistToSchedule || $scope.group.selectedGroup.playlists[0].name ,
                 settings: { durationEnable: false, timeEnable: false}
             });
             $scope.updateGroup();
@@ -276,6 +286,16 @@ angular.module('piGroups.controllers', [])
 
 
         $scope.scheduleCalendar = function (playlist) {
+            var getHoursMinutes = function(timeString) {
+                var hhmmArray = timeString.split(':');
+                if (hhmmArray.length == 2)
+                    return ({h:parseInt(hhmmArray[0]),m: parseInt(hhmmArray[1])});
+                else if (hhmmArray.length == 1)
+                    return ({h:0,m: parseInt(hhmmArray[0])});
+                else if (hhmmArray.length > 2)
+                    return ({h:parseInt(hhmmArray[hhmmArray.length -2]),m: parseInt(hhmmArray[hhmmArray.length -1])});
+            }
+
             $scope.forPlaylist = playlist;
             if (!$scope.forPlaylist.settings.weekdays &&
                 $scope.forPlaylist.settings.weekday &&
@@ -318,12 +338,36 @@ angular.module('piGroups.controllers', [])
                 if ($scope.forPlaylist.settings.enddate) {
                     $scope.forPlaylist.settings.enddate = new Date($scope.forPlaylist.settings.enddate)
                 }
-                if ($scope.forPlaylist.settings.starttimeObj) {
-                    $scope.forPlaylist.settings.starttimeObj = new Date($scope.forPlaylist.settings.starttimeObj)
+                $scope.today = new Date().toISOString().split("T")[0];
+                $scope.$watch("forPlaylist.settings.startdate", function(value) {
+                    if (value) {
+                        var endday = new Date(value);
+                        $scope.endday = endday.toISOString().split("T")[0];
+                        if (!$scope.forPlaylist.settings.enddate ||
+                            value > $scope.forPlaylist.settings.enddate)
+                            $scope.forPlaylist.settings.enddate = endday;
+                    }
+                });
+                
+                // if ($scope.forPlaylist.settings.starttimeObj) {
+                //     $scope.forPlaylist.settings.starttimeObj = new Date($scope.forPlaylist.settings.starttimeObj)
+                // }
+                // if ($scope.forPlaylist.settings.endtimeObj) {
+                //     $scope.forPlaylist.settings.endtimeObj = new Date($scope.forPlaylist.settings.endtimeObj)
+                // }
+                if ($scope.forPlaylist.settings.starttime) {
+                    $scope.forPlaylist.settings.starttimeObj = new Date(0)
+                    var t = getHoursMinutes($scope.forPlaylist.settings.starttime)
+                    $scope.forPlaylist.settings.starttimeObj.setHours(t.h)
+                    $scope.forPlaylist.settings.starttimeObj.setMinutes(t.m)
                 }
-                if ($scope.forPlaylist.settings.endtimeObj) {
-                    $scope.forPlaylist.settings.endtimeObj = new Date($scope.forPlaylist.settings.endtimeObj)
+                if ($scope.forPlaylist.settings.endtime) {
+                    $scope.forPlaylist.settings.endtimeObj = new Date(0)
+                    var t = getHoursMinutes($scope.forPlaylist.settings.endtime)
+                    $scope.forPlaylist.settings.endtimeObj.setHours(t.h)
+                    $scope.forPlaylist.settings.endtimeObj.setMinutes(t.m)
                 }
+
             }
             $scope.scheduleCalendarModal = $modal.open({
                 templateUrl: '/app/templates/schedule-calendar.html',
@@ -341,15 +385,29 @@ angular.module('piGroups.controllers', [])
                     delete $scope.forPlaylist.settings.monthday
                 $scope.showDates()
                 if ($scope.forPlaylist.settings) {
+                    // if ($scope.forPlaylist.settings.starttimeObj) {
+                    //     var time = $scope.forPlaylist.settings.starttimeObj.toTimeString().split(' ')[0].slice(0,5)
+                    //     $scope.forPlaylist.settings.starttime = time;
+                    // }
+                    // if ($scope.forPlaylist.settings.endtimeObj) {
+                    //     var time = $scope.forPlaylist.settings.endtimeObj.toTimeString().split(' ')[0].slice(0,5)
+                    //     $scope.forPlaylist.settings.endtime = time;
+                    // }
+                    var minutes,hours;
                     if ($scope.forPlaylist.settings.starttimeObj) {
-                        var time = $scope.forPlaylist.settings.starttimeObj.toTimeString().split(' ')[0].slice(0,5)
-                        $scope.forPlaylist.settings.starttime = time;
+                        hours = $scope.forPlaylist.settings.starttimeObj.getHours()
+                        $scope.forPlaylist.settings.starttime = (hours < 10)?("0"+hours):(""+hours);
+                        minutes = $scope.forPlaylist.settings.starttimeObj.getMinutes();
+                        $scope.forPlaylist.settings.starttime += (minutes < 10)?(":0"+minutes):":"+minutes;
                     }
                     if ($scope.forPlaylist.settings.endtimeObj) {
-                        var time = $scope.forPlaylist.settings.endtimeObj.toTimeString().split(' ')[0].slice(0,5)
-                        $scope.forPlaylist.settings.endtime = time;
+                        hours = $scope.forPlaylist.settings.endtimeObj.getHours()
+                        $scope.forPlaylist.settings.endtime = (hours < 10)?("0"+hours):(""+hours);
+                        minutes = $scope.forPlaylist.settings.endtimeObj.getMinutes();
+                        $scope.forPlaylist.settings.endtime += (minutes < 10)?(":0"+minutes):":"+minutes;
                     }
                 }
+
                 $scope.updateGroup();
                 //formcontroller.$dirty? $scope.deployform.$setDirty(): ''; //  inform user  of new changes
             })
@@ -427,8 +485,9 @@ angular.module('piGroups.controllers', [])
 
         $scope.displaySet = function () {
             $scope.resolutions = [
-                {value: '720p', name: "HD(720p) Video & Browser 1280x720"},
+                {value: 'auto', name: "Auto based on TV settings(EDID)"},
                 {value: '1080p', name: "Full HD(1080p) Video & Browser 1920x1080"},
+                {value: '720p', name: "HD(720p) Video & Browser 1280x720"},
                 {value: 'PAL',name: 'PAL (RCA), 720x576 Video and Browser'},
                 {value: 'NTSC',name: 'NTSC (RCA), 720x480 Video and Browser' }
             ];
@@ -438,6 +497,14 @@ angular.module('piGroups.controllers', [])
                 {value: 'portrait', name: "Portrait Right (Hardware)"},
                 {value: 'portrait270', name: "Portrait Left (Hardware)"}
             ];
+
+            $scope.group.selectedGroup.showClock = $scope.group.selectedGroup.showClock || {enable: false}
+            $scope.group.selectedGroup.showClock.format = $scope.group.selectedGroup.showClock.format || "12";
+            $scope.group.selectedGroup.showClock.position = $scope.group.selectedGroup.showClock.position || "bottom";
+
+            $scope.group.selectedGroup.videoSize = $scope.group.selectedGroup.videoKeepAspect ? 1 : 2 ;
+            $scope.group.selectedGroup.imageSize = $scope.group.selectedGroup.resizeAssets ? ($scope.group.selectedGroup.imageLetterboxed?1:2) : 0;
+
 
             $scope.scheduleCalendar = function (playlist) {
                 $scope.forPlaylist = playlist;
@@ -456,6 +523,10 @@ angular.module('piGroups.controllers', [])
                     $scope.group.selectedGroup.sleep.offtimeObj = new Date($scope.group.selectedGroup.sleep.offtimeObj)
                 }
             }
+            if ($scope.group.selectedGroup.reboot && $scope.group.selectedGroup.reboot.time) {
+                $scope.group.selectedGroup.reboot.time = new Date($scope.group.selectedGroup.reboot.time)
+            }
+
 
             $scope.displayModal = $modal.open({
                 templateUrl: '/app/templates/display-set.html',
@@ -475,30 +546,66 @@ angular.module('piGroups.controllers', [])
                     $scope.group.selectedGroup.sleep.offtime = time
                 }
             }
+
+            switch ($scope.group.selectedGroup.imageSize) {
+                case 1:
+                    $scope.group.selectedGroup.imageLetterboxed = true;
+                    $scope.group.selectedGroup.resizeAssets = true;
+                    break;
+                case 2:
+                    $scope.group.selectedGroup.imageLetterboxed = false;
+                    $scope.group.selectedGroup.resizeAssets = true;
+                    break;
+                default:
+                    $scope.group.selectedGroup.resizeAssets = false;
+            }
+            switch ($scope.group.selectedGroup.videoSize) {
+                // case 0:
+                //     $scope.group.selectedGroup.videoKeepAspect = true;
+                //     break;
+                case 1:
+                    $scope.group.selectedGroup.videoKeepAspect = true;
+                    break;
+                default:
+                    $scope.group.selectedGroup.videoKeepAspect = false;
+            }
+
+
             $scope.updateGroup();
         }
 
         $scope.groupTicker = function() {
-            var ticker = $scope.group.selectedGroup.ticker ||
-                                    {
-                                        enable:false,
-                                        behavior: 'scroll',
-                                        rss: { enable: false , link: null }
-                                    }
+            $scope.group.selectedGroup.ticker = $scope.group.selectedGroup.ticker || {}
+            var ticker = $scope.group.selectedGroup.ticker
             ticker.enable = ticker.enable || false
             ticker.behavior = ticker.behavior || 'slide'
-            ticker.rss = ticker.rss || { enable: false , link: null }
+            ticker.textSpeed = ticker.textSpeed || 3
+            ticker.rss = ticker.rss || { enable: false , link: null, feedDelay:10 }
+            $scope.tickerObj = $scope.group.selectedGroup.ticker;
             $scope.tickerModal = $modal.open({
-                templateUrl: '/app/templates/group-ticker-popup.html',
+                templateUrl: '/app/templates/ticker-popup.html',
                 scope: $scope
             });
         }
-        $scope.tickerSave = function() {
+        $scope.saveTickerSettings = function() {
             if ($scope.group.selectedGroup.ticker.style)
                 $scope.group.selectedGroup.ticker.style = $scope.group.selectedGroup.ticker.style.replace(/\"/g,'');
             if ($scope.group.selectedGroup.ticker.messages)
                 $scope.group.selectedGroup.ticker.messages = $scope.group.selectedGroup.ticker.messages.replace(/'/g, "`")
             $scope.tickerModal.close();
+            $scope.updateGroup();
+            $scope.needToDeploy = true;
+        }
+
+        $scope.emergencyMessage = function() {
+            $scope.emsgModal = $modal.open({
+                templateUrl: '/app/templates/emergencyMessagePopup.html',
+                scope: $scope
+            })
+
+        }
+        $scope.messageSave = function() {
+            $scope.emsgModal.close();
             $scope.updateGroup();
             $scope.needToDeploy = true;
         }
@@ -512,19 +619,15 @@ angular.module('piGroups.controllers', [])
             if (!$scope.group.selectedGroup.playlists.length)
                 return;
             $scope.group.selectedGroup.orientation = $scope.group.selectedGroup.orientation || 'landscape';
-            $scope.group.selectedGroup.resolution = $scope.group.selectedGroup.resolution || '720p';
+            $scope.group.selectedGroup.resolution = $scope.group.selectedGroup.resolution || 'auto';
             $scope.group.selectedGroup.deploy = true;
             $scope.updateGroup(function (err,msg) {
                 if (!err) {
-                    $scope.msg = {msg: 'Deployed! Request has been sent to all Players.', title: 'Deploy Success'};
+                    piPopup.status({msg: 'Deployed! Request has been sent to all Players.', title: 'Deploy Success'});
                     $scope.needToDeploy = false;
                 } else {
-                    $scope.msg = {msg: msg, title: 'Deploy Failed'};
+                    piPopup.status({msg: msg, title: 'Deploy Failed'});
                 }
-                $scope.deployModal = $modal.open({
-                    templateUrl: '/app/templates/status-popup.html',
-                    scope: $scope
-                });
             })
         }
         $scope.closeWindow = function () {
@@ -548,6 +651,7 @@ angular.module('piGroups.controllers', [])
                 })
                 .error(function(data, status) {
                 });
+            $scope.imgFilter = ".png"
             $scope.fileDisplayModal = $modal.open({
                 templateUrl: '/app/templates/listFilePopup.html',
                 scope: $scope,
@@ -651,6 +755,18 @@ angular.module('piGroups.controllers', [])
                 });
         }
 
+        function getCssClass(groupId) {
+            for (var i=0,len=$scope.group.groups.length;i<len;i++) {
+                if ($scope.group.groups[i]._id == groupId) {
+                    break;
+                }
+            }
+            if (i < len) {
+                return ($scope.group.groups[i].orientation)
+            } else
+                return "landscape"
+        }
+
         $scope.getSnapshot = function() {
             $scope.snapshot.buttonTxt = "Please Wait";
             $http
@@ -660,6 +776,8 @@ angular.module('piGroups.controllers', [])
                         $scope.snapshot.image = (data.data.url) + "?" + Date.now()
                         $scope.snapshot.lastTaken = data.data.lastTaken
                         $scope.snapshot.buttonTxt = "Take Snapshot";
+                        $scope.snapshot.cssClass = getCssClass(
+                            ($scope.msg.player.group && $scope.msg.player.group._id)?$scope.msg.player.group._id:$scope.msg.player.selfGroupId);
                     } else {
                         $scope.snapshot.buttonTxt = data.stat_message;
                     }

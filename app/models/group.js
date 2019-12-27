@@ -6,8 +6,15 @@ var GroupSchema = new Schema({
     description:            String,
 
     playlists:              [],
+    playlistToSchedule:      String,
     combineDefaultPlaylist: {type: Boolean , default: false},
+    playAllEligiblePlaylists: {type: Boolean , default: false},
+    shuffleContent:         {type: Boolean , default: false},
+    alternateContent:         {type: Boolean , default: false},
+    timeToStopVideo:        {type: Number , default: 0 },
+    
     assets:                 [],
+    assetsValidity:         [],
     ticker:                 {},
 
     deployedPlaylists:      [],
@@ -16,14 +23,17 @@ var GroupSchema = new Schema({
 
     lastDeployed:           String,
 
+    enableMpv:              {type: Boolean, default: false},
     orientation:            {type: String,default: 'landscape'},
     animationEnable:        {type: Boolean, default: false},
     animationType:          {type: String, default: null},
-    resizeAssets:           {type: Boolean, default: false},
+    resizeAssets:           {type: Boolean, default: true},
+    videoKeepAspect:        {type: Boolean, default: false},
+    imageLetterboxed:       {type: Boolean, default: false},
     signageBackgroundColor: {type: String, default: "#000"},
     urlReloadDisable:       {type: Boolean, default: true},
     loadPlaylistOnCompletion:{type: Boolean, default: false},
-    resolution:             {type: String,default: '720p'},
+    resolution:             {type: String,default: 'auto'},
     sleep: {
                             enable: {type: Boolean, default: false},
                             ontime: {type: String},
@@ -31,16 +41,35 @@ var GroupSchema = new Schema({
                             ontimeObj: {type: String},
                             offtimeObj: {type: String}
     },
+    reboot:                 {
+                                enable: {type: Boolean,default: false},
+                                time: { type: String}
+                            },
+    kioskUi:                {
+                                enable:     {type: Boolean, default: false},
+                                url:        {type: String},
+                                timeout:    {type: Number}
+                            },
     omxVolume:              {type: Number , default: 100 },
     logo:                   {type: String,default: null},
     logox:                  {type: Number,default: 10},
     logoy:                  {type: Number,default: 10},
     showClock:              {
-                                enable: {type: Boolean, default: false}
+                                enable: {type: Boolean, default: false},
+                                format: {type: String, default: "12"},
+                                position: {type: String, default: "bottom"}
+                            },
+    emergencyMessage:       {
+                                enable: false,
+                                msg: {type: String, default: ""},
+                                hPos: {type: String, default: "middle"},
+                                vPos: {type: String, default: "middle"}
                             },
 
     createdAt:              {type: Date, default: Date.now},
     createdBy:              {_id: {type: Schema.ObjectId, ref: 'User'}, name: String}
+}, {
+    usePushEach: true
 })
 
 
@@ -64,7 +93,7 @@ GroupSchema.statics = {
             delete criteria.all
         }
         this.find(criteria)
-            .sort({_id: -1}) // sort by date
+            .sort({name: 1}) // sort by date
             .limit(options.perPage)
             .skip(options.perPage * options.page)
             .exec(cb)

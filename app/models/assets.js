@@ -11,9 +11,11 @@ var AssetSchema = new Schema({
     thumbnail: String,
     labels: [],
     playlists:              [],
-
+    validity:               {enable:Boolean, startdate:String,enddate:String,starthour:Number,endhour:Number},
     createdAt: {type: Date, default: Date.now},
     createdBy: {_id: {type: Schema.ObjectId, ref: 'User'}, name: String}
+}, {
+    usePushEach: true
 })
 
 AssetSchema.index({ installation: 1 });
@@ -27,7 +29,7 @@ AssetSchema.statics = {
         var criteria = options.criteria || {}
 
         this.find(criteria)
-            .sort({_id: -1}) // sort by date
+            .sort({name: 1}) // sort by date
             .limit(options.perPage)
             .skip(options.perPage * options.page)
             .exec(cb)

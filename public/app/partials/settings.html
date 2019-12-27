@@ -42,6 +42,15 @@
           </div>
         </div>
         <div class="form-group">
+          <label class="col-xs-4 control-label">SSH Password</label>
+          <div class="col-xs-2">
+            <input type="password" name="sshPassword" ng-model="settings.sshPassword"/>
+          </div>
+          <div class="col-xs-2">
+            <button type="submit" ng-click="saveSettings()" class="btn btn-success"> Save</button>
+          </div>
+        </div>
+        <div class="form-group">
           <label class="col-xs-4 control-label">Default Duration for Slides</label>
           <div class="col-xs-2">
             <input type="text" name="duration" ng-model="settings.defaultDuration" class="form-control"/>
@@ -53,21 +62,58 @@
         <div class="form-group">
           <div class="checkbox">
             <label class="col-xs-8 col-xs-offset-4">
+              <input type="checkbox" name="youtubedl" ng-model="settings.enableYoutubeDl" ng-change="saveSettings()"/><span>Use youtube-dl program for livestreaming instead of livestreamer</span>
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="checkbox">
+            <label class="col-xs-8 col-xs-offset-4">
+              <input type="checkbox" name="forcetvon" ng-model="settings.forceTvOn" ng-click="saveSettings()"/><span>Keep TV on by sending CEC tv-on/off message every 3 minutes</span>
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="checkbox">
+            <label class="col-xs-8 col-xs-offset-4">
               <input type="checkbox" name="systemshow" ng-model="settings.systemMessagesHide" ng-click="saveSettings()"/><span>Hide system messages on TV Screen (e.g. Download in Progress)</span>
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="checkbox">
+            <label class="col-xs-8 col-xs-offset-4">
+              <input type="checkbox" name="hidenotice" ng-model="settings.hideWelcomeNotice" ng-change="saveSettings()"/><span>Do not show startup welcome screen &  skip network diagnostics</span>
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="col-xs-4 control-label">Player reporting interval in minutes</label>
+          <div class="col-xs-2">
+            <input type="number" name="reportinterval" ng-model="settings.reportIntervalMinutes" placeholder="default 5 minutes" class="form-control"/>
+          </div>
+          <div class="col-xs-2">
+            <button type="submit" ng-click="saveSettings()" class="btn btn-success">Save</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="checkbox">
+            <label class="col-xs-8 col-xs-offset-4">
+              <input type="checkbox" name="logs" ng-model="settings.enableLog" ng-change="saveSettings()"/><span class="text-warning">Enable log for file play count/details (network intensive, do not enable unless you need it!)</span>
             </label>
           </div>
         </div>
         <!--.form-group
         <div class="checkbox">
           <label class="col-xs-8 col-xs-offset-4">
-            <input type="checkbox" id="log" name="checkbox" ng-model="settings.assetLogEnable" ng-change="saveSettings()"/><span translate="translate">Enable Log for Files Play Statistics</span>
+            <input type="checkbox" id="log" name="checkbox" ng-model="settings.assetLogEnable" ng-change="saveSettings()"/><span>Enable Log for Files Play Statistics</span>
           </label>
         </div>
         -->
         <!--.form-group
         <div class="checkbox">
           <label class="col-xs-8 col-xs-offset-4">
-            <input type="checkbox" id="layout" name="checkbox" ng-model="settings.newLayoutsEnable" ng-change="saveSettings()"/><span translate="translate">Enable new Layouts 3c,3d,4c,4d</span><br/><strong translate="translate" class="text-danger">WARNING: ALL players in the GROUP should be of version >= 1.2.2</strong>
+            <input type="checkbox" id="layout" name="checkbox" ng-model="settings.newLayoutsEnable" ng-change="saveSettings()"/><span>Enable new Layouts 3c,3d,4c,4d</span><br/><strong class="text-danger">WARNING: ALL players in the GROUP should be of version >= 1.2.2</strong>
           </label>
         </div>
         -->

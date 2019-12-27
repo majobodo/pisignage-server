@@ -18,6 +18,8 @@ var LabelSchema= new Schema({
 
     createdAt:              {type: Date, default: Date.now},
     createdBy:              {_id: {type: Schema.ObjectId, ref: 'User'}, name: String}
+}, {
+    usePushEach: true
 })
 
 LabelSchema.path('name').validate(function (name) {
@@ -63,7 +65,7 @@ LabelSchema.statics = {
         var criteria = options.criteria || {}
 
         this.find(criteria)
-            .sort({_id: -1}) // sort by date
+            .sort({name: 1}) // sort by date
             .limit(options.perPage)
             .skip(options.perPage * options.page)
             .exec(cb)

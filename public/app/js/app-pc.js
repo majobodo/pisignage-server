@@ -4,10 +4,12 @@ angular.module('piServerApp', [
     'ui.router',
     'ui.bootstrap',
     'ui.sortable',
+    'yaru22.angular-timeago',
     'angularjs-dropdown-multiselect',
     'piConfig',
     'piIndex.controllers',
     'piGroups.controllers',
+    'dashboard.controllers',
     'piAssets.controllers',
     'piAssets.services',
     'piPlayers.services',
@@ -15,6 +17,7 @@ angular.module('piServerApp', [
     'piPlaylists.controllers',
     'piLabels.controllers',
     'pisignage.directives',
+    'pisignage.filters',
     'pisignage.services'
 ])
     .config(function ($stateProvider, $urlRouterProvider, $locationProvider, $httpProvider) {
@@ -55,6 +58,26 @@ angular.module('piServerApp', [
                     },
                     "list": {
                         templateUrl: '/app/partials/players.html'
+                    }
+                }
+            })
+
+            .state("home.dashboard",{
+                url: "dashboard",
+                views: {
+                    "main": {
+                        templateUrl: '/app/partials/dashboard.html',
+                        controller: 'DashboardCtrl'
+                    }
+                }
+            })
+
+            .state("home.dashboard_players", {
+                url: "dashboard/players?groupName&locationName&currentPlaylist&version&bucket",
+                views: {
+                    "main": {
+                        templateUrl: '/app/partials/players.html',
+                        controller:'ServerPlayerCtrl'
                     }
                 }
             })
@@ -190,27 +213,27 @@ angular.module('piServerApp', [
     })
     .run(function ($window,$modal,piUrls,$http, $rootScope,castApi) {
         var currentBrowser = $window.navigator.userAgent.toLowerCase();
-        if(currentBrowser.indexOf('chrome') == -1){
-            $modal.open({
-                template: [
-                    '<div class="modal-header">',
-                    '<h3 class="modal-title">We prefer Chrome Browser</h3>',
-                    '</div>',
-                    '<div class="modal-body">',
-                    '<p>Work in progress for making pisignage work with Firefox & Safari, ' +
-                    'please report the issues at support@pisignage.com</p>',
-                    '</div>',
-                    '<div class="modal-footer">',
-                    '<button ng-click="cancel()" class="btn btn-warning">Got it!</button>',
-                    '</div>'
-                ].join(''),
-                controller: ['$scope','$modalInstance',function($scope,$modalInstance){
-                    $scope.cancel = function(){
-                            $modalInstance.close();
-                        }
-                    }]
-            })
-        }
+        // if(currentBrowser.indexOf('chrome') == -1){
+        //     $modal.open({
+        //         template: [
+        //             '<div class="modal-header">',
+        //             '<h3 class="modal-title">We prefer Chrome Browser</h3>',
+        //             '</div>',
+        //             '<div class="modal-body">',
+        //             '<p>Work in progress for making pisignage work with Firefox & Safari, ' +
+        //             'please report the issues at support@pisignage.com</p>',
+        //             '</div>',
+        //             '<div class="modal-footer">',
+        //             '<button ng-click="cancel()" class="btn btn-warning">Got it!</button>',
+        //             '</div>'
+        //         ].join(''),
+        //         controller: ['$scope','$modalInstance',function($scope,$modalInstance){
+        //             $scope.cancel = function(){
+        //                     $modalInstance.close();
+        //                 }
+        //             }]
+        //     })
+        // }
         /**
          * extends string prototype object to get a string with a number of characters from a string.
          *

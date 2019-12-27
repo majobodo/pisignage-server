@@ -45,7 +45,8 @@ exports.processFile = function (filename, filesize, categories, cb) {
                         },
                         function(img_cb){ // resize image
                             imageMagick(src)
-                                .resize(2560,2560,'>')
+                                .autoOrient()
+                                .resize(3840,3840,'>')
                                 .write(src,function(err,op1){
                                     if(err)
                                         console.log("Image resize error for : "+src +"  "+err);
@@ -54,8 +55,12 @@ exports.processFile = function (filename, filesize, categories, cb) {
                         },
                         function (img_cb) {
                             imageMagick(src).filesize(function(err,value){
-                                if (value)
+                                if (value) {
+                                    var multipleB = value.lastIndexOf("B",value.length-2)
+                                    if (multipleB > 0)
+                                        value = value.slice(multipleB+1)
                                     mediaSize = value;
+                                }
                                 img_cb();
                             })
                         },
@@ -89,7 +94,7 @@ exports.processFile = function (filename, filesize, categories, cb) {
                                         new FFmpeg({source: src})
                                             .audioCodec('libfdk_aac')
                                             .videoCodec('libx264')
-                                            .size('?x720')
+                                            .size('?x1080')
                                             .toFormat('mp4')
                                             .outputOptions([
                                                 '-profile:v high',
@@ -125,6 +130,11 @@ exports.processFile = function (filename, filesize, categories, cb) {
                         },
                         function (video_cb) {
                             probe(filePath, function (err, metadata) {
+                                if (err || !metadata || !metadata.format) {
+                                    console.log("probe error "+filePath+";"+err.message)
+                                    console.log(metadata);
+                                    return video_cb();
+                                }
                                 if (metadata) {
                                     duration = metadata.format.duration;
                                     if (metadata.format.size)
@@ -142,6 +152,7 @@ exports.processFile = function (filename, filesize, categories, cb) {
                             });
                         },
                         function (video_cb) {
+                            var snaptime = duration >= 10 ? 8 : 2;
                             new FFmpeg({source: filePath})
                                 .on('error', function (err) {
                                     console.log('ffmpeg, An error occurred: ' + err.message);
@@ -155,7 +166,7 @@ exports.processFile = function (filename, filesize, categories, cb) {
                                 .takeScreenshots({
                                     size: '64x64',
                                     count: 1,
-                                    timemarks: ['8'],
+                                    timemarks: [snaptime],
                                     filename: random+filename + '.png'
                                 }, config.thumbnailDir);
                         }
@@ -180,6 +191,13 @@ exports.processFile = function (filename, filesize, categories, cb) {
                 } else {
                     if (filename.match(config.noticeRegex))
                         type = 'notice';
+                    else if(filename.match(config.txtFileRegex))
+                        type= 'text';
+                    else if(filename.match(config.pdffileRegex))
+                        type = 'pdf';
+                    else if(filename.match(config.radioFileRegex))
+                        type = 'radio';
+
                     task_cb();
                 }
             }],

@@ -41,8 +41,8 @@ angular.module('piConfig', [])
 
     .constant('piConstants', (function() {
         return {
-            videoRegex:     /(mp4|mov|m4v|avi|webm|wmv|flv|mkv|mpg|mpeg)$/i,
-            audioRegex:     /(mp3)$/i,
+            videoRegex:     /(mp4|mov|m4v|avi|webm|wmv|flv|mkv|mpg|mpeg|3gp)$/i,
+            audioRegex:     /(mp3|m4a|mp4a|aac)$/i,
             imageRegex:     /(jpg|jpeg|png|gif|bmp)$/i,
             noticeRegex:    /\.html$/i,
             zipfileRegex:   /(.zip|.gz|.bz2)$/i,
@@ -51,7 +51,12 @@ angular.module('piConfig', [])
             omxStreamRegex :        /\.stream$/i,
             linkURL:                /\.link$/i,
             CORSLink:               /\.weblink$/i,
-            mediaRss:               /\.mrss$/i
+            mediaRss:               /\.mrss$/i,
+            nestedPlaylist:         /^__/i,
+            groupNameRegEx:         /[&\/\\#,+()$~%'":*?<>{}\^]/g,
+            pdffileRegex:           /\.pdf$/i,
+            txtFileRegex:           /\.txt$/i,
+            radioFileRegex:         /\.radio$/i
         }
     })())
 
