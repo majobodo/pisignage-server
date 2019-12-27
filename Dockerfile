@@ -47,7 +47,7 @@ RUN mkdir "$HOME/ffmpeg_build" && cd "$HOME/ffmpeg_build" && \
     ln -s "$HOME/bin/ffprobe" /usr/local/bin/ffprobe
 
 # Install pisignage
-RUN git clone -b update-socketio https://github.com/pschmitt/pisignage-server /usr/src/app && \
+RUN git clone -b update-socketio https://github.com/majobodo/pisignage-server /usr/src/app && \
     cd /usr/src/app && \
     npm install
 
