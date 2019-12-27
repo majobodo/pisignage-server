@@ -17,7 +17,6 @@ ENV MONGO_HOST=mongo MONGO_PORT=27017 MONGO_DB=pisignage-server
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod 744 /entrypoint.sh
-RUN chmod 744 entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
 
